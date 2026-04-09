@@ -1,3 +1,16 @@
 {
-  "placeholderImages": []
+  "placeholderImages": [
+    {
+      "id": "template-1",
+      "description": "Male portrait with neutral expression",
+      "imageUrl": "https://picsum.photos/seed/mimic1/400/400",
+      "imageHint": "male portrait"
+    },
+    {
+      "id": "template-2",
+      "description": "Female portrait with smiling expression",
+      "imageUrl": "https://picsum.photos/seed/mimic2/400/400",
+      "imageHint": "female portrait"
+    }
+  ]
 }
