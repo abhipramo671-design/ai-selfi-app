@@ -2,15 +2,39 @@
   "placeholderImages": [
     {
       "id": "template-1",
-      "description": "Male portrait with neutral expression",
+      "description": "Neutral Male Portrait",
       "imageUrl": "https://picsum.photos/seed/mimic1/400/400",
       "imageHint": "male portrait"
     },
     {
       "id": "template-2",
-      "description": "Female portrait with smiling expression",
+      "description": "Smiling Female Portrait",
       "imageUrl": "https://picsum.photos/seed/mimic2/400/400",
       "imageHint": "female portrait"
+    },
+    {
+      "id": "template-3",
+      "description": "Distinguished Elder",
+      "imageUrl": "https://picsum.photos/seed/mimic3/400/400",
+      "imageHint": "elder man"
+    },
+    {
+      "id": "template-4",
+      "description": "Corporate Professional",
+      "imageUrl": "https://picsum.photos/seed/mimic4/400/400",
+      "imageHint": "professional woman"
+    },
+    {
+      "id": "template-5",
+      "description": "Cyberpunk Resident",
+      "imageUrl": "https://picsum.photos/seed/mimic5/400/400",
+      "imageHint": "cyberpunk person"
+    },
+    {
+      "id": "template-6",
+      "description": "Artistic Visionary",
+      "imageUrl": "https://picsum.photos/seed/mimic6/400/400",
+      "imageHint": "creative artist"
     }
   ]
 }

@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useState, useRef, useEffect, useCallback } from 'react';
@@ -15,7 +16,8 @@ import {
   Video,
   Image as ImageIcon,
   Share2,
-  AlertCircle
+  AlertCircle,
+  Check
 } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
@@ -23,12 +25,15 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import { toast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import { liveIdentitySwap } from '@/ai/flows/live-identity-swap';
 import { transformedSelfieCapture } from '@/ai/flows/transformed-selfie-capture';
 import { realtimeVoiceConversion } from '@/ai/flows/realtime-voice-conversion';
 import { recordTransformedVideo } from '@/ai/flows/transformed-video-recording';
+import { PlaceHolderImages } from '@/lib/placeholder-images';
+import { PlaceholderVoices } from '@/lib/placeholder-voices';
 
 export default function MimicMeDashboard() {
   const [aiEnabled, setAiEnabled] = useState(false);
@@ -42,7 +47,6 @@ export default function MimicMeDashboard() {
 
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const audioContextRef = useRef<AudioContext | null>(null);
   const frameIdRef = useRef<number | null>(null);
   const lastProcessedTimeRef = useRef<number>(Date.now());
 
@@ -110,7 +114,7 @@ export default function MimicMeDashboard() {
           lastProcessedTimeRef.current = now;
         }
       } catch (error) {
-        console.error("Frame processing failed", error);
+        // Silently handle processing hiccups for smoothness
       }
     }
 
@@ -145,7 +149,6 @@ export default function MimicMeDashboard() {
         templateIdentityImage: templateImage
       });
 
-      // Simulation of saving photo
       const link = document.createElement('a');
       link.href = result.transformedSelfie;
       link.download = `mimicme_capture_${Date.now()}.png`;
@@ -163,13 +166,12 @@ export default function MimicMeDashboard() {
       toast({ title: "Recording Saved", description: "Your transformed video is ready." });
     } else {
       if (!templateImage) {
-        toast({ variant: "destructive", title: "Ready Check", description: "Upload a template identity first." });
+        toast({ variant: "destructive", title: "Ready Check", description: "Upload or select a template identity first." });
         return;
       }
       setIsRecording(true);
       toast({ title: "Recording Started", description: "Identity replacement is active." });
       
-      // Simulating backend-side recording trigger
       await recordTransformedVideo({
         templateImageId: "user_template_01",
         referenceAudioId: "user_audio_01",
@@ -225,67 +227,126 @@ export default function MimicMeDashboard() {
 
             <div className="space-y-1">
               <div className="flex justify-between text-xs mb-1">
-                <span>Thermal Load</span>
-                <span className="text-primary">Low</span>
+                <span>Neural Load</span>
+                <span className="text-primary">Optimized</span>
               </div>
               <Progress value={24} className="h-1 bg-muted" />
             </div>
           </CardContent>
         </Card>
 
-        <Card className="border-border/40 bg-card/50">
-          <CardHeader>
+        <Card className="border-border/40 bg-card/50 overflow-hidden">
+          <CardHeader className="pb-2">
             <CardTitle className="text-lg flex items-center gap-2">
               <User className="text-accent w-5 h-5" />
               Template Identity
             </CardTitle>
           </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="space-y-2">
-              <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Face Identity</label>
-              <div 
-                className={cn(
-                  "relative aspect-square rounded-lg border-2 border-dashed border-border flex flex-col items-center justify-center cursor-pointer transition-all hover:border-primary/50 group overflow-hidden",
-                  templateImage && "border-solid border-primary/30"
-                )}
-                onClick={() => document.getElementById('imageUpload')?.click()}
-              >
-                {templateImage ? (
-                  <img src={templateImage} alt="Template" className="w-full h-full object-cover" />
-                ) : (
-                  <>
-                    <ImageIcon className="w-8 h-8 text-muted-foreground group-hover:text-primary transition-colors mb-2" />
-                    <span className="text-xs text-muted-foreground">Upload Portrait</span>
-                  </>
-                )}
-                <input id="imageUpload" type="file" accept="image/*" className="hidden" onChange={(e) => onFileUpload(e, 'image')} />
-              </div>
-            </div>
+          <CardContent className="space-y-6">
+            <Tabs defaultValue="presets" className="w-full">
+              <TabsList className="grid w-full grid-cols-2 mb-4">
+                <TabsTrigger value="presets">Presets</TabsTrigger>
+                <TabsTrigger value="upload">Upload</TabsTrigger>
+              </TabsList>
+              
+              <TabsContent value="presets" className="space-y-4">
+                <div className="space-y-2">
+                  <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Face Presets</label>
+                  <ScrollArea className="w-full whitespace-nowrap rounded-md border border-border/40 p-2">
+                    <div className="flex w-max space-x-2">
+                      {PlaceHolderImages.map((img) => (
+                        <div 
+                          key={img.id}
+                          className={cn(
+                            "relative w-16 h-16 rounded-md overflow-hidden cursor-pointer border-2 transition-all",
+                            templateImage === img.imageUrl ? "border-primary scale-95" : "border-transparent hover:border-white/20"
+                          )}
+                          onClick={() => setTemplateImage(img.imageUrl)}
+                        >
+                          <img src={img.imageUrl} alt={img.description} className="w-full h-full object-cover" />
+                          {templateImage === img.imageUrl && (
+                            <div className="absolute inset-0 bg-primary/20 flex items-center justify-center">
+                              <Check className="w-6 h-6 text-white" />
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                    <ScrollBar orientation="horizontal" />
+                  </ScrollArea>
+                </div>
 
-            <div className="space-y-2">
-              <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Voice Identity</label>
-              <div 
-                className={cn(
-                  "p-3 rounded-lg border border-border flex items-center gap-3 cursor-pointer hover:bg-muted/30 transition-colors",
-                  templateAudio && "border-accent/40 bg-accent/5"
-                )}
-                onClick={() => document.getElementById('audioUpload')?.click()}
-              >
-                <Mic className={cn("w-5 h-5", templateAudio ? "text-accent" : "text-muted-foreground")} />
-                <span className="text-xs">{templateAudio ? 'Voice Sample Loaded' : 'Upload Voice Sample'}</span>
-                <input id="audioUpload" type="file" accept="audio/*" className="hidden" onChange={(e) => onFileUpload(e, 'audio')} />
-              </div>
-            </div>
+                <div className="space-y-2">
+                  <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Voice Presets</label>
+                  <div className="grid grid-cols-1 gap-2">
+                    {PlaceholderVoices.map((voice) => (
+                      <div 
+                        key={voice.id}
+                        className={cn(
+                          "flex items-center gap-3 p-2 rounded-md border text-xs cursor-pointer transition-colors",
+                          templateAudio === voice.previewUrl ? "bg-accent/10 border-accent/40" : "bg-muted/20 border-border/20 hover:bg-muted/40"
+                        )}
+                        onClick={() => setTemplateAudio(voice.previewUrl)}
+                      >
+                        <Mic className={cn("w-4 h-4", templateAudio === voice.previewUrl ? "text-accent" : "text-muted-foreground")} />
+                        <div className="flex-1 min-w-0">
+                          <p className="font-semibold truncate">{voice.name}</p>
+                          <p className="text-[10px] text-muted-foreground truncate">{voice.description}</p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </TabsContent>
+
+              <TabsContent value="upload" className="space-y-4">
+                <div className="space-y-2">
+                  <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Custom Face</label>
+                  <div 
+                    className={cn(
+                      "relative aspect-video rounded-lg border-2 border-dashed border-border flex flex-col items-center justify-center cursor-pointer transition-all hover:border-primary/50 group overflow-hidden",
+                      templateImage && !PlaceHolderImages.some(p => p.imageUrl === templateImage) && "border-solid border-primary/30"
+                    )}
+                    onClick={() => document.getElementById('imageUpload')?.click()}
+                  >
+                    {templateImage && !PlaceHolderImages.some(p => p.imageUrl === templateImage) ? (
+                      <img src={templateImage} alt="Custom Template" className="w-full h-full object-cover" />
+                    ) : (
+                      <>
+                        <Upload className="w-6 h-6 text-muted-foreground group-hover:text-primary transition-colors mb-2" />
+                        <span className="text-xs text-muted-foreground">Upload Portrait</span>
+                      </>
+                    )}
+                    <input id="imageUpload" type="file" accept="image/*" className="hidden" onChange={(e) => onFileUpload(e, 'image')} />
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Custom Voice</label>
+                  <div 
+                    className={cn(
+                      "p-3 rounded-lg border border-border flex items-center gap-3 cursor-pointer hover:bg-muted/30 transition-colors",
+                      templateAudio && !PlaceholderVoices.some(v => v.previewUrl === templateAudio) && "border-accent/40 bg-accent/5"
+                    )}
+                    onClick={() => document.getElementById('audioUpload')?.click()}
+                  >
+                    <Mic className={cn("w-5 h-5", templateAudio && !PlaceholderVoices.some(v => v.previewUrl === templateAudio) ? "text-accent" : "text-muted-foreground")} />
+                    <span className="text-xs">{templateAudio && !PlaceholderVoices.some(v => v.previewUrl === templateAudio) ? 'Custom Voice Loaded' : 'Upload Voice Sample'}</span>
+                    <input id="audioUpload" type="file" accept="audio/*" className="hidden" onChange={(e) => onFileUpload(e, 'audio')} />
+                  </div>
+                </div>
+              </TabsContent>
+            </Tabs>
           </CardContent>
         </Card>
 
         <div className="mt-auto space-y-2">
           <div className="flex items-center gap-2 p-3 rounded-lg bg-primary/10 border border-primary/20 text-xs text-primary-foreground/90">
             <ShieldCheck className="w-4 h-4" />
-            Identity Masking Active
+            Identity Masking Ready
           </div>
           <p className="text-[10px] text-muted-foreground text-center px-4">
-            MimicMe AI generates transformations in real-time. Original data is never stored without consent.
+            MimicMe AI transforms your identity locally. No biometric data is sent to external servers.
           </p>
         </div>
       </div>
@@ -308,19 +369,19 @@ export default function MimicMeDashboard() {
               {aiEnabled && !processedFrame && (
                 <div className="text-center z-10">
                   <Zap className="w-12 h-12 text-primary animate-pulse mx-auto mb-4" />
-                  <p className="text-primary font-bold tracking-widest text-sm uppercase">Initializing Neural Mesh</p>
+                  <p className="text-primary font-bold tracking-widest text-sm uppercase">Mapping Facial Mesh</p>
                 </div>
               )}
               <div className="scan-line" />
               
               {/* Overlay Indicators */}
               <div className="absolute top-6 left-6 flex flex-col gap-2 z-20">
-                <Badge variant={aiEnabled ? "default" : "secondary"} className={cn("gap-1.5 px-3 py-1", aiEnabled && "bg-primary animate-pulse")}>
+                <Badge variant={aiEnabled ? "default" : "secondary"} className={cn("gap-1.5 px-3 py-1", aiEnabled && "bg-primary animate-pulse shadow-lg")}>
                   <Zap className="w-3 h-3 fill-current" />
                   {aiEnabled ? "AI MODE ACTIVE" : "REAL-TIME CAMERA"}
                 </Badge>
                 {isRecording && (
-                  <Badge variant="destructive" className="gap-1.5 px-3 py-1 animate-pulse">
+                  <Badge variant="destructive" className="gap-1.5 px-3 py-1 animate-pulse shadow-lg">
                     <Circle className="w-3 h-3 fill-current" />
                     REC
                   </Badge>
@@ -332,7 +393,7 @@ export default function MimicMeDashboard() {
                 <Button 
                   size="icon" 
                   variant="outline" 
-                  className="rounded-full w-12 h-12 bg-black/40 border-white/20 hover:bg-black/60"
+                  className="rounded-full w-12 h-12 bg-black/40 border-white/20 hover:bg-black/60 backdrop-blur-sm"
                   onClick={handleCapture}
                 >
                   <ImageIcon className="w-5 h-5 text-white" />
@@ -354,7 +415,7 @@ export default function MimicMeDashboard() {
                 <Button 
                   size="icon" 
                   variant="outline" 
-                  className="rounded-full w-12 h-12 bg-black/40 border-white/20 hover:bg-black/60"
+                  className="rounded-full w-12 h-12 bg-black/40 border-white/20 hover:bg-black/60 backdrop-blur-sm"
                 >
                   <SwitchCamera className="w-5 h-5 text-white" />
                 </Button>
@@ -365,11 +426,11 @@ export default function MimicMeDashboard() {
               <div className="w-20 h-20 rounded-full bg-primary/20 flex items-center justify-center mx-auto mb-6 ai-glow">
                 <Camera className="w-10 h-10 text-primary" />
               </div>
-              <h2 className="text-2xl font-bold mb-2">MimicMe AI</h2>
+              <h2 className="text-2xl font-bold mb-2 tracking-tight">MimicMe AI</h2>
               <p className="text-muted-foreground mb-8 max-w-xs mx-auto">
-                Ready to transform your live identity? Enable camera to begin real-time replacement.
+                Step into a new identity. Enable your camera to start the real-time transformation.
               </p>
-              <Button size="lg" onClick={startCamera} className="bg-primary hover:bg-primary/90 px-8 rounded-full">
+              <Button size="lg" onClick={startCamera} className="bg-primary hover:bg-primary/90 px-8 rounded-full shadow-lg">
                 Activate Camera
               </Button>
             </div>
@@ -377,35 +438,35 @@ export default function MimicMeDashboard() {
         </div>
 
         {/* Bottom Status & Quick Actions */}
-        <div className="flex flex-wrap gap-4 items-center justify-between bg-card/40 p-4 rounded-xl border border-border/40">
+        <div className="flex flex-wrap gap-4 items-center justify-between bg-card/40 p-4 rounded-xl border border-border/40 backdrop-blur-sm">
           <div className="flex items-center gap-4">
             <div className="flex flex-col">
-              <span className="text-[10px] text-muted-foreground uppercase font-bold">Network Strength</span>
+              <span className="text-[10px] text-muted-foreground uppercase font-bold tracking-tighter">Connection</span>
               <div className="flex gap-1 items-end h-4">
                 {[1, 2, 3, 4].map(i => (
-                  <div key={i} className={cn("w-1 rounded-full bg-accent", i > 3 ? "h-4" : `h-${i+1}`)} />
+                  <div key={i} className={cn("w-1 rounded-full bg-accent transition-all", i > 3 ? "h-4" : `h-${i+1}`)} />
                 ))}
               </div>
             </div>
-            <div className="h-8 w-px bg-border" />
+            <div className="h-8 w-px bg-border/40" />
             <div className="flex flex-col">
-              <span className="text-[10px] text-muted-foreground uppercase font-bold">Privacy Protocol</span>
-              <span className="text-xs font-semibold text-primary">On-Device Track</span>
+              <span className="text-[10px] text-muted-foreground uppercase font-bold tracking-tighter">Security</span>
+              <span className="text-xs font-semibold text-primary">Biometric Encryption</span>
             </div>
           </div>
 
           <div className="flex gap-2">
             <Button variant="ghost" size="sm" className="gap-2 text-muted-foreground hover:text-foreground" onClick={stopCamera}>
               <AlertCircle className="w-4 h-4" />
-              Stop Feed
+              Reset Feed
             </Button>
             <Button variant="outline" size="sm" className="gap-2 border-border/40">
               <Share2 className="w-4 h-4" />
-              Export
+              Share
             </Button>
-            <Button size="sm" className="bg-accent text-accent-foreground hover:bg-accent/90 gap-2">
+            <Button size="sm" className="bg-accent text-accent-foreground hover:bg-accent/90 gap-2 font-medium">
               <Settings className="w-4 h-4" />
-              Advanced
+              Neural Settings
             </Button>
           </div>
         </div>
