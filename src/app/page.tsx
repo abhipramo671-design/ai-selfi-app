@@ -34,11 +34,13 @@ import { liveIdentitySwap } from '@/ai/flows/live-identity-swap';
 import { transformedSelfieCapture } from '@/ai/flows/transformed-selfie-capture';
 import { PlaceHolderImages } from '@/lib/placeholder-images';
 import { PlaceholderVoices } from '@/lib/placeholder-voices';
+import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
 
 export default function MimicMeDashboard() {
   const [aiEnabled, setAiEnabled] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
   const [cameraActive, setCameraActive] = useState(false);
+  const [hasCameraPermission, setHasCameraPermission] = useState<boolean | null>(null);
   const [templateImage, setTemplateImage] = useState<string | null>(null);
   const [templateAudio, setTemplateAudio] = useState<string | null>(null);
   const [processedFrame, setProcessedFrame] = useState<string | null>(null);
@@ -56,20 +58,37 @@ export default function MimicMeDashboard() {
   // Initialize camera
   const startCamera = async () => {
     try {
+      // First check if any camera devices are present
+      const devices = await navigator.mediaDevices.enumerateDevices();
+      const hasVideoDevice = devices.some(device => device.kind === 'videoinput');
+      
+      if (!hasVideoDevice) {
+        setHasCameraPermission(false);
+        toast({
+          variant: "destructive",
+          title: "No Camera Found",
+          description: "Please connect a camera or webcam to use this app."
+        });
+        return;
+      }
+
       const stream = await navigator.mediaDevices.getUserMedia({ 
         video: { facingMode: 'user', width: { ideal: 720 }, height: { ideal: 1280 } },
         audio: true 
       });
+
+      setHasCameraPermission(true);
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
         setCameraActive(true);
         toast({ title: "System Online", description: "Camera and Microphone activated." });
       }
     } catch (err) {
+      setHasCameraPermission(false);
       toast({
         variant: "destructive",
         title: "Camera Access Error",
-        description: "Please allow camera and microphone permissions."
+        description: "Please allow camera and microphone permissions in your browser settings."
       });
     }
   };
@@ -96,7 +115,6 @@ export default function MimicMeDashboard() {
     const displayCtx = displayCanvas.getContext('2d');
 
     if (ctx && displayCtx && video.readyState === video.HAVE_ENOUGH_DATA) {
-      // Scale canvases to match video
       if (canvas.width !== video.videoWidth) {
         canvas.width = video.videoWidth;
         canvas.height = video.videoHeight;
@@ -104,18 +122,15 @@ export default function MimicMeDashboard() {
         displayCanvas.height = video.videoHeight;
       }
 
-      // Draw original frame to hidden canvas for AI processing
       ctx.drawImage(video, 0, 0);
 
       if (aiEnabled && processedFrame) {
-        // Render processed frame from AI
         const img = new Image();
         img.onload = () => {
           displayCtx.drawImage(img, 0, 0, displayCanvas.width, displayCanvas.height);
         };
         img.src = processedFrame;
       } else {
-        // Render original frame
         displayCtx.drawImage(video, 0, 0, displayCanvas.width, displayCanvas.height);
       }
     }
@@ -160,7 +175,6 @@ export default function MimicMeDashboard() {
         }
       }
       
-      // Control processing frequency to manage load/cost
       setTimeout(process, aiEnabled ? 100 : 500);
     };
 
@@ -195,7 +209,6 @@ export default function MimicMeDashboard() {
     recordedChunksRef.current = [];
     const stream = displayCanvasRef.current.captureStream(30);
     
-    // Attempt to add audio if available
     if (videoRef.current?.srcObject) {
       const audioTracks = (videoRef.current.srcObject as MediaStream).getAudioTracks();
       if (audioTracks.length > 0) {
@@ -245,6 +258,10 @@ export default function MimicMeDashboard() {
 
   return (
     <div className="min-h-screen bg-background text-foreground flex flex-col md:flex-row p-4 gap-4 max-w-[1600px] mx-auto">
+      {/* Hidden elements always present to prevent race conditions */}
+      <video ref={videoRef} autoPlay playsInline muted className="hidden" />
+      <canvas ref={canvasRef} className="hidden" />
+
       {/* Left Sidebar: Settings & Identity */}
       <div className="w-full md:w-80 flex flex-col gap-4 order-2 md:order-1">
         <Card className="ai-glow border-primary/20">
@@ -260,6 +277,7 @@ export default function MimicMeDashboard() {
               <Switch 
                 checked={aiEnabled} 
                 onCheckedChange={setAiEnabled}
+                disabled={!cameraActive}
                 className="data-[state=checked]:bg-primary"
               />
             </div>
@@ -388,18 +406,19 @@ export default function MimicMeDashboard() {
 
       {/* Main Viewfinder Section */}
       <div className="flex-1 flex flex-col gap-4 order-1 md:order-2">
+        {hasCameraPermission === false && (
+          <Alert variant="destructive" className="bg-destructive/10 border-destructive/20 text-destructive">
+            <AlertCircle className="h-4 w-4" />
+            <AlertTitle>Camera Access Required</AlertTitle>
+            <AlertDescription>
+              We couldn't access your camera. Please ensure it's connected and you've granted permission in your browser settings.
+            </AlertDescription>
+          </Alert>
+        )}
+
         <div className="camera-viewfinder relative bg-[#0a0a0a] flex items-center justify-center group shadow-2xl rounded-2xl border border-border/20 overflow-hidden">
           {cameraActive ? (
             <>
-              {/* Actual Video Source (Hidden) */}
-              <video 
-                ref={videoRef} 
-                autoPlay 
-                playsInline 
-                muted 
-                className="hidden" 
-              />
-              
               {/* Processed/Raw Feed Canvas */}
               <canvas 
                 ref={displayCanvasRef} 
@@ -502,9 +521,6 @@ export default function MimicMeDashboard() {
           </div>
         </div>
       </div>
-
-      {/* Hidden canvas for offscreen processing */}
-      <canvas ref={canvasRef} className="hidden" />
     </div>
   );
 }
