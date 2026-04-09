@@ -19,7 +19,11 @@ import {
   AlertCircle,
   Check,
   Download,
-  Smartphone
+  Smartphone,
+  RotateCcw,
+  Sliders,
+  Sparkles,
+  Waves
 } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
@@ -28,6 +32,16 @@ import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
+import { Slider } from "@/components/ui/slider";
+import { 
+  Dialog, 
+  DialogContent, 
+  DialogDescription, 
+  DialogHeader, 
+  DialogTitle, 
+  DialogTrigger,
+  DialogFooter
+} from "@/components/ui/dialog";
 import { toast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import { liveIdentitySwap } from '@/ai/flows/live-identity-swap';
@@ -46,6 +60,12 @@ export default function MimicMeDashboard() {
   const [processedFrame, setProcessedFrame] = useState<string | null>(null);
   const [latency, setLatency] = useState(0);
   const [fps, setFps] = useState(0);
+  
+  // Neural Config State
+  const [showConfig, setShowConfig] = useState(false);
+  const [smoothing, setSmoothing] = useState(65);
+  const [enhancement, setEnhancement] = useState(80);
+  const [voiceClarity, setVoiceClarity] = useState(90);
 
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -58,7 +78,6 @@ export default function MimicMeDashboard() {
   // Initialize camera
   const startCamera = async () => {
     try {
-      // First check if any camera devices are present
       const devices = await navigator.mediaDevices.enumerateDevices();
       const hasVideoDevice = devices.some(device => device.kind === 'videoinput');
       
@@ -101,9 +120,27 @@ export default function MimicMeDashboard() {
     }
   };
 
+  const handleResetSystem = () => {
+    stopCamera();
+    setAiEnabled(false);
+    setTemplateImage(null);
+    setTemplateAudio(null);
+    setProcessedFrame(null);
+    setLatency(0);
+    setFps(0);
+    toast({
+      title: "System Purged",
+      description: "Neural buffers cleared and hardware detached.",
+    });
+  };
+
   // Main rendering loop
   const renderLoop = useCallback(() => {
     if (!cameraActive || !videoRef.current || !displayCanvasRef.current || !canvasRef.current) {
+      if (displayCanvasRef.current) {
+        const ctx = displayCanvasRef.current.getContext('2d');
+        if (ctx) ctx.clearRect(0, 0, displayCanvasRef.current.width, displayCanvasRef.current.height);
+      }
       frameIdRef.current = requestAnimationFrame(renderLoop);
       return;
     }
@@ -145,11 +182,10 @@ export default function MimicMeDashboard() {
       if (!active) return;
       
       if (aiEnabled && cameraActive && videoRef.current && canvasRef.current && templateImage) {
-        const video = videoRef.current;
         const canvas = canvasRef.current;
         const ctx = canvas.getContext('2d');
 
-        if (ctx && video.readyState === video.HAVE_ENOUGH_DATA) {
+        if (ctx && videoRef.current && videoRef.current.readyState === videoRef.current.HAVE_ENOUGH_DATA) {
           const frameData = canvas.toDataURL('image/jpeg', 0.5);
           const startTime = performance.now();
 
@@ -157,7 +193,11 @@ export default function MimicMeDashboard() {
             const result = await liveIdentitySwap({
               cameraFrameDataUri: frameData,
               templateImageDataUri: templateImage,
-              faceTrackingData: JSON.stringify({ timestamp: Date.now() })
+              faceTrackingData: JSON.stringify({ 
+                timestamp: Date.now(),
+                smoothing,
+                enhancement
+              })
             });
 
             if (result.transformedFrameDataUri) {
@@ -170,7 +210,7 @@ export default function MimicMeDashboard() {
               lastProcessedTimeRef.current = now;
             }
           } catch (error) {
-            // Processing failure usually due to network/rate limit
+            // Silently handle processing hiccups
           }
         }
       }
@@ -180,7 +220,7 @@ export default function MimicMeDashboard() {
 
     process();
     return () => { active = false; };
-  }, [aiEnabled, cameraActive, templateImage]);
+  }, [aiEnabled, cameraActive, templateImage, smoothing, enhancement]);
 
   useEffect(() => {
     frameIdRef.current = requestAnimationFrame(renderLoop);
@@ -277,7 +317,7 @@ export default function MimicMeDashboard() {
               <Switch 
                 checked={aiEnabled} 
                 onCheckedChange={setAiEnabled}
-                disabled={!cameraActive}
+                disabled={!cameraActive || !templateImage}
                 className="data-[state=checked]:bg-primary"
               />
             </div>
@@ -510,14 +550,97 @@ export default function MimicMeDashboard() {
           </div>
 
           <div className="flex gap-2">
-            <Button variant="ghost" size="sm" className="h-8 text-[10px] font-bold uppercase tracking-wider text-muted-foreground hover:text-foreground" onClick={stopCamera}>
-              <AlertCircle className="w-3.5 h-3.5 mr-1" />
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              className="h-8 text-[10px] font-bold uppercase tracking-wider text-muted-foreground hover:text-foreground group"
+              onClick={handleResetSystem}
+            >
+              <RotateCcw className="w-3.5 h-3.5 mr-1 group-hover:rotate-[-45deg] transition-transform" />
               Reset System
             </Button>
-            <Button size="sm" className="h-8 bg-accent text-accent-foreground hover:bg-accent/90 text-[10px] font-bold uppercase tracking-wider">
-              <Settings className="w-3.5 h-3.5 mr-1" />
-              Neural Config
-            </Button>
+            
+            <Dialog open={showConfig} onOpenChange={setShowConfig}>
+              <DialogTrigger asChild>
+                <Button size="sm" className="h-8 bg-accent text-accent-foreground hover:bg-accent/90 text-[10px] font-bold uppercase tracking-wider">
+                  <Settings className="w-3.5 h-3.5 mr-1" />
+                  Neural Config
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="sm:max-w-[425px] bg-background border-primary/20">
+                <DialogHeader>
+                  <DialogTitle className="flex items-center gap-2">
+                    <Sliders className="w-5 h-5 text-primary" />
+                    Neural Engine Configuration
+                  </DialogTitle>
+                  <DialogDescription>
+                    Adjust AI processing weights for identity swap and voice synthesis.
+                  </DialogDescription>
+                </DialogHeader>
+                
+                <div className="grid gap-6 py-4">
+                  <div className="space-y-3">
+                    <div className="flex justify-between items-center">
+                      <label className="text-sm font-medium flex items-center gap-2">
+                        <Sparkles className="w-4 h-4 text-accent" />
+                        Face Smoothing
+                      </label>
+                      <span className="text-xs font-mono bg-muted px-1.5 rounded">{smoothing}%</span>
+                    </div>
+                    <Slider 
+                      value={[smoothing]} 
+                      onValueChange={(val) => setSmoothing(val[0])} 
+                      max={100} 
+                      step={1} 
+                      className="py-1"
+                    />
+                    <p className="text-[10px] text-muted-foreground">Adjusts the blend edge between template and source face.</p>
+                  </div>
+
+                  <div className="space-y-3">
+                    <div className="flex justify-between items-center">
+                      <label className="text-sm font-medium flex items-center gap-2">
+                        <Zap className="w-4 h-4 text-primary" />
+                        Expression Transfer
+                      </label>
+                      <span className="text-xs font-mono bg-muted px-1.5 rounded">{enhancement}%</span>
+                    </div>
+                    <Slider 
+                      value={[enhancement]} 
+                      onValueChange={(val) => setEnhancement(val[0])} 
+                      max={100} 
+                      step={1} 
+                      className="py-1"
+                    />
+                    <p className="text-[10px] text-muted-foreground">Determines how aggressively the template adopts source facial movements.</p>
+                  </div>
+
+                  <div className="space-y-3">
+                    <div className="flex justify-between items-center">
+                      <label className="text-sm font-medium flex items-center gap-2">
+                        <Waves className="w-4 h-4 text-accent" />
+                        Voice Clarity
+                      </label>
+                      <span className="text-xs font-mono bg-muted px-1.5 rounded">{voiceClarity}%</span>
+                    </div>
+                    <Slider 
+                      value={[voiceClarity]} 
+                      onValueChange={(val) => setVoiceClarity(val[0])} 
+                      max={100} 
+                      step={1} 
+                      className="py-1"
+                    />
+                    <p className="text-[10px] text-muted-foreground">RVC model denoising and frequency stabilization level.</p>
+                  </div>
+                </div>
+
+                <DialogFooter>
+                  <Button onClick={() => setShowConfig(false)} className="w-full bg-primary hover:bg-primary/90">
+                    Apply Neural Parameters
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
           </div>
         </div>
       </div>
