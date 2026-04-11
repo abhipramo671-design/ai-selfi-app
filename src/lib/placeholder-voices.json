@@ -4,25 +4,25 @@
     {
       "id": "voice-1",
       "name": "Soft Soprano (Female)",
-      "description": "Clear and melodic feminine tone for gentle narrations",
+      "description": "Natural feminine speech profile",
       "previewUrl": "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3"
     },
     {
       "id": "voice-2",
       "name": "Deep Baritone (Male)",
-      "description": "Rich, resonant masculine tone for deep narrations",
+      "description": "Resonant masculine speech profile",
       "previewUrl": "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-2.mp3"
     },
     {
       "id": "voice-3",
       "name": "Commanding Alto (Female)",
-      "description": "Authoritative feminine presence for professional use",
+      "description": "Authoritative feminine speech profile",
       "previewUrl": "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-3.mp3"
     },
     {
       "id": "voice-4",
       "name": "Youthful Tenor (Male)",
-      "description": "Energetic and clear male speech pattern",
+      "description": "Bright masculine speech profile",
       "previewUrl": "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-4.mp3"
     }
   ]

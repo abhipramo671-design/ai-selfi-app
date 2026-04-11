@@ -2,39 +2,39 @@
   "placeholderImages": [
     {
       "id": "human-1",
-      "description": "Professional Executive (Female)",
-      "imageUrl": "https://picsum.photos/seed/human1/400/400",
+      "description": "Executive Portrait (Female)",
+      "imageUrl": "https://picsum.photos/seed/portrait1/400/400",
       "imageHint": "woman portrait"
     },
     {
       "id": "human-2",
-      "description": "Young Urban Male",
-      "imageUrl": "https://picsum.photos/seed/human2/400/400",
+      "description": "Urban Style (Male)",
+      "imageUrl": "https://picsum.photos/seed/portrait2/400/400",
       "imageHint": "man portrait"
     },
     {
       "id": "human-3",
-      "description": "Creative Director (Female)",
-      "imageUrl": "https://picsum.photos/seed/human3/400/400",
-      "imageHint": "woman portrait"
+      "description": "Professional Headshot (Female)",
+      "imageUrl": "https://picsum.photos/seed/portrait3/400/400",
+      "imageHint": "woman headshot"
     },
     {
       "id": "human-4",
-      "description": "Athletic Fitness Coach (Male)",
-      "imageUrl": "https://picsum.photos/seed/human4/400/400",
+      "description": "Distinguished Elder (Male)",
+      "imageUrl": "https://picsum.photos/seed/portrait4/400/400",
       "imageHint": "man portrait"
     },
     {
       "id": "human-5",
-      "description": "Senior Distinguished Lady",
-      "imageUrl": "https://picsum.photos/seed/human5/400/400",
-      "imageHint": "woman portrait"
+      "description": "Modern Creative (Female)",
+      "imageUrl": "https://picsum.photos/seed/portrait5/400/400",
+      "imageHint": "woman creative"
     },
     {
       "id": "human-6",
-      "description": "Academic Researcher (Male)",
-      "imageUrl": "https://picsum.photos/seed/human6/400/400",
-      "imageHint": "man portrait"
+      "description": "Casual Academic (Male)",
+      "imageUrl": "https://picsum.photos/seed/portrait6/400/400",
+      "imageHint": "man glasses"
     }
   ]
 }
