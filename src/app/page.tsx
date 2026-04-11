@@ -25,7 +25,8 @@ import {
   Sparkles,
   Waves,
   Loader2,
-  Volume2
+  Volume2,
+  FileAudio
 } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
@@ -477,7 +478,7 @@ export default function MimicMeDashboard() {
                 </div>
               </TabsContent>
 
-              <TabsContent value="upload" className="space-y-4">
+              <TabsContent value="upload" className="space-y-6">
                 <div className="space-y-2">
                   <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Custom Identity Map</label>
                   <div 
@@ -492,10 +493,35 @@ export default function MimicMeDashboard() {
                     ) : (
                       <>
                         <Upload className="w-5 h-5 text-muted-foreground group-hover:text-primary transition-colors mb-2" />
-                        <span className="text-[10px] text-muted-foreground">Upload Source Photo</span>
+                        <span className="text-[10px] text-muted-foreground">Upload Source Photo (Man)</span>
                       </>
                     )}
                     <input id="imageUpload" type="file" accept="image/*" className="hidden" onChange={(e) => onFileUpload(e, 'image')} />
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Custom Voice Profile</label>
+                  <div 
+                    className={cn(
+                      "relative h-24 rounded-lg border-2 border-dashed border-white/10 flex flex-col items-center justify-center cursor-pointer transition-all hover:border-accent/50 group overflow-hidden bg-black/20",
+                      templateAudio && !PlaceholderVoices.some(v => v.previewUrl === templateAudio) && "border-solid border-accent/30"
+                    )}
+                    onClick={() => document.getElementById('audioUpload')?.click()}
+                  >
+                    {templateAudio && !PlaceholderVoices.some(v => v.previewUrl === templateAudio) ? (
+                      <div className="flex flex-col items-center gap-1">
+                        <FileAudio className="w-5 h-5 text-accent animate-pulse" />
+                        <span className="text-[10px] text-accent font-bold">Custom Voice Sample Attached</span>
+                        <span className="text-[9px] text-muted-foreground">Ready for Neural Synthesis</span>
+                      </div>
+                    ) : (
+                      <>
+                        <Mic className="w-5 h-5 text-muted-foreground group-hover:text-accent transition-colors mb-2" />
+                        <span className="text-[10px] text-muted-foreground">Upload Voice Sample (Man)</span>
+                      </>
+                    )}
+                    <input id="audioUpload" type="file" accept="audio/*" className="hidden" onChange={(e) => onFileUpload(e, 'audio')} />
                   </div>
                 </div>
               </TabsContent>
