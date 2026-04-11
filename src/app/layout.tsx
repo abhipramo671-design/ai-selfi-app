@@ -2,22 +2,15 @@
 import type {Metadata, Viewport} from 'next';
 import './globals.css';
 import { Toaster } from "@/components/ui/toaster"
+import { FirebaseClientProvider } from "@/firebase/client-provider";
 
 export const metadata: Metadata = {
-  title: 'MimicMe AI - Real-Time Identity Replacement',
-  description: 'AI-powered identity and voice transformation for live camera streams.',
-  appleWebApp: {
-    capable: true,
-    statusBarStyle: 'default',
-    title: 'MimicMe AI',
-  },
-  formatDetection: {
-    telephone: false,
-  },
+  title: 'AI Selfie Studio',
+  description: 'Generate professional portraits from your selfies with AI.',
 };
 
 export const viewport: Viewport = {
-  themeColor: '#25203A',
+  themeColor: '#263.4 70% 50.4%',
   width: 'device-width',
   initialScale: 1,
   maximumScale: 1,
@@ -31,16 +24,11 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" className="dark">
-      <head>
-        <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
-        <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
-        <meta name="mobile-web-app-capable" content="yes" />
-        <meta name="apple-mobile-web-app-capable" content="yes" />
-      </head>
       <body className="font-body antialiased selection:bg-primary/30 selection:text-primary-foreground">
-        {children}
-        <Toaster />
+        <FirebaseClientProvider>
+          {children}
+          <Toaster />
+        </FirebaseClientProvider>
       </body>
     </html>
   );

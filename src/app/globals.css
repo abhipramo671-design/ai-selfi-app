@@ -1,29 +1,30 @@
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 @layer base {
   :root {
-    --background: 250 29% 12%; /* #25203A */
-    --foreground: 210 40% 98%;
-    --card: 250 29% 15%;
-    --card-foreground: 210 40% 98%;
-    --popover: 250 29% 12%;
-    --popover-foreground: 210 40% 98%;
-    --primary: 268 78% 51%; /* #7C20E5 */
+    --background: 240 10% 3.9%;
+    --foreground: 0 0% 98%;
+    --card: 240 10% 3.9%;
+    --card-foreground: 0 0% 98%;
+    --popover: 240 10% 3.9%;
+    --popover-foreground: 0 0% 98%;
+    --primary: 263.4 70% 50.4%;
     --primary-foreground: 210 40% 98%;
-    --secondary: 250 20% 20%;
-    --secondary-foreground: 210 40% 98%;
-    --muted: 250 20% 25%;
-    --muted-foreground: 215 20% 65%;
-    --accent: 214 100% 77%; /* #89BBFF */
-    --accent-foreground: 250 29% 12%;
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 210 40% 98%;
-    --border: 250 20% 25%;
-    --input: 250 20% 25%;
-    --ring: 268 78% 51%;
-    --radius: 0.75rem;
+    --secondary: 240 3.7% 15.9%;
+    --secondary-foreground: 0 0% 98%;
+    --muted: 240 3.7% 15.9%;
+    --muted-foreground: 240 5% 64.9%;
+    --accent: 240 3.7% 15.9%;
+    --accent-foreground: 0 0% 98%;
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 240 3.7% 15.9%;
+    --input: 240 3.7% 15.9%;
+    --ring: 263.4 70% 50.4%;
+    --radius: 1rem;
   }
 }
 
@@ -32,39 +33,21 @@
     @apply border-border;
   }
   body {
-    @apply bg-background text-foreground font-body;
+    @apply bg-background text-foreground font-body antialiased;
   }
 }
 
-.camera-viewfinder {
-  position: relative;
-  overflow: hidden;
-  border-radius: var(--radius);
-  background: #000;
-  aspect-ratio: 9/16;
-  max-height: 80vh;
-  box-shadow: 0 0 40px rgba(124, 32, 229, 0.2);
+.glass-morphism {
+  @apply bg-white/5 backdrop-blur-xl border border-white/10;
 }
 
-.scan-line {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 2px;
-  background: var(--accent);
-  opacity: 0.5;
-  box-shadow: 0 0 10px var(--accent);
-  animation: scan 3s linear infinite;
-  pointer-events: none;
+.animate-gradient {
+  background-size: 200% 200%;
+  animation: gradient 8s ease infinite;
 }
 
-@keyframes scan {
-  0% { transform: translateY(0); }
-  100% { transform: translateY(80vh); }
-}
-
-.ai-glow {
-  box-shadow: 0 0 20px rgba(124, 32, 229, 0.4);
-  border: 1px solid rgba(124, 32, 229, 0.5);
+@keyframes gradient {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
 }

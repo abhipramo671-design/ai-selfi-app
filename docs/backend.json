@@ -1,0 +1,56 @@
+
+{
+  "entities": {
+    "UserProfile": {
+      "title": "User Profile",
+      "description": "Information about the authenticated user.",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "email": { "type": "string", "format": "email" },
+        "displayName": { "type": "string" },
+        "photoURL": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["uid", "email"]
+    },
+    "UserUpload": {
+      "title": "User Upload",
+      "description": "Metadata for a selfie uploaded by the user.",
+      "type": "object",
+      "properties": {
+        "url": { "type": "string" },
+        "storagePath": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "fileName": { "type": "string" }
+      }
+    },
+    "GeneratedPortrait": {
+      "title": "Generated Portrait",
+      "description": "An AI-generated portrait for the user.",
+      "type": "object",
+      "properties": {
+        "url": { "type": "string" },
+        "prompt": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      }
+    }
+  },
+  "auth": {
+    "providers": ["google.com"]
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "UserProfile",
+      "description": "User profile data."
+    },
+    "/users/{userId}/uploads/{uploadId}": {
+      "schema": "UserUpload",
+      "description": "Collection of user-uploaded reference selfies."
+    },
+    "/users/{userId}/generations/{genId}": {
+      "schema": "GeneratedPortrait",
+      "description": "Collection of AI-generated portraits."
+    }
+  }
+}
