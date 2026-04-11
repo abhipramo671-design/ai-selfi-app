@@ -428,7 +428,7 @@ export default function MimicMeDashboard() {
               
               <TabsContent value="presets" className="space-y-4">
                 <div className="space-y-2">
-                  <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest block mb-2">Biometric Faces</label>
+                  <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest block mb-2">Biometric Human Faces</label>
                   <ScrollArea className="w-full whitespace-nowrap rounded-md border border-white/5 p-2 bg-black/20">
                     <div className="flex w-max space-x-2">
                       {PlaceHolderImages.map((img) => (
@@ -440,7 +440,7 @@ export default function MimicMeDashboard() {
                           )}
                           onClick={() => setTemplateImage(img.imageUrl)}
                         >
-                          <img src={img.imageUrl} alt={img.description} className="w-full h-full object-cover grayscale-[0.2] group-hover:grayscale-0 transition-all" />
+                          <img src={img.imageUrl} alt={img.description} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" />
                           {templateImage === img.imageUrl && (
                             <div className="absolute inset-0 bg-primary/20 flex items-center justify-center backdrop-blur-[1px]">
                               <Check className="w-4 h-4 text-white" />
@@ -454,7 +454,7 @@ export default function MimicMeDashboard() {
                 </div>
 
                 <div className="space-y-2">
-                  <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest block mb-2">Voice Models</label>
+                  <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest block mb-2">Human Voice Models</label>
                   <ScrollArea className="h-[180px] pr-3">
                     <div className="grid grid-cols-1 gap-1.5">
                       {PlaceholderVoices.map((voice) => (
@@ -480,7 +480,7 @@ export default function MimicMeDashboard() {
 
               <TabsContent value="upload" className="space-y-6">
                 <div className="space-y-2">
-                  <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Custom Identity Map</label>
+                  <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Custom Biometric Map</label>
                   <div 
                     className={cn(
                       "relative aspect-[4/3] rounded-lg border-2 border-dashed border-white/10 flex flex-col items-center justify-center cursor-pointer transition-all hover:border-primary/50 group overflow-hidden bg-black/20",
@@ -493,7 +493,7 @@ export default function MimicMeDashboard() {
                     ) : (
                       <>
                         <Upload className="w-5 h-5 text-muted-foreground group-hover:text-primary transition-colors mb-2" />
-                        <span className="text-[10px] text-muted-foreground">Upload Source Photo (Man)</span>
+                        <span className="text-[10px] text-muted-foreground">Upload Human Photo</span>
                       </>
                     )}
                     <input id="imageUpload" type="file" accept="image/*" className="hidden" onChange={(e) => onFileUpload(e, 'image')} />
@@ -512,13 +512,13 @@ export default function MimicMeDashboard() {
                     {templateAudio && !PlaceholderVoices.some(v => v.previewUrl === templateAudio) ? (
                       <div className="flex flex-col items-center gap-1">
                         <FileAudio className="w-5 h-5 text-accent animate-pulse" />
-                        <span className="text-[10px] text-accent font-bold">Custom Voice Sample Attached</span>
-                        <span className="text-[9px] text-muted-foreground">Ready for Neural Synthesis</span>
+                        <span className="text-[10px] text-accent font-bold">Custom Profile Attached</span>
+                        <span className="text-[9px] text-muted-foreground">Ready for Synthesis</span>
                       </div>
                     ) : (
                       <>
                         <Mic className="w-5 h-5 text-muted-foreground group-hover:text-accent transition-colors mb-2" />
-                        <span className="text-[10px] text-muted-foreground">Upload Voice Sample (Man)</span>
+                        <span className="text-[10px] text-muted-foreground">Upload Human Voice Sample</span>
                       </>
                     )}
                     <input id="audioUpload" type="file" accept="audio/*" className="hidden" onChange={(e) => onFileUpload(e, 'audio')} />
@@ -628,7 +628,7 @@ export default function MimicMeDashboard() {
               </div>
               <h2 className="text-3xl font-bold mb-3 tracking-tighter bg-gradient-to-r from-white to-white/60 bg-clip-text text-transparent">MimicMe AI</h2>
               <p className="text-muted-foreground mb-10 max-w-sm mx-auto text-sm leading-relaxed">
-                Connect your mobile sensor to begin real-time identity and voice transformation.
+                Connect your mobile sensor to begin real-time human identity and voice transformation.
               </p>
               <Button 
                 size="lg" 
@@ -657,7 +657,7 @@ export default function MimicMeDashboard() {
             <div className="flex flex-col">
               <span className="text-[10px] text-muted-foreground uppercase font-black tracking-tighter opacity-70">Neural Mode</span>
               <span className={cn("text-[10px] font-bold", cameraActive ? "text-primary" : "text-muted-foreground")}>
-                {aiEnabled ? "FACE + VOICE MASKED" : "UNMASKED"}
+                {aiEnabled ? "NEURAL MASK ACTIVE" : "UNMASKED"}
               </span>
             </div>
           </div>

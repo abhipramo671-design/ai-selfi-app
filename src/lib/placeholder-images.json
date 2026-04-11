@@ -1,39 +1,39 @@
 {
   "placeholderImages": [
     {
-      "id": "man-1",
-      "description": "Professional Executive (Male)",
-      "imageUrl": "https://picsum.photos/seed/man1/400/400",
-      "imageHint": "man portrait"
+      "id": "human-1",
+      "description": "Professional Executive (Female)",
+      "imageUrl": "https://picsum.photos/seed/human1/400/400",
+      "imageHint": "woman portrait"
     },
     {
-      "id": "man-2",
+      "id": "human-2",
       "description": "Young Urban Male",
-      "imageUrl": "https://picsum.photos/seed/man2/400/400",
+      "imageUrl": "https://picsum.photos/seed/human2/400/400",
       "imageHint": "man portrait"
     },
     {
-      "id": "man-3",
-      "description": "Bearded Distinguished Man",
-      "imageUrl": "https://picsum.photos/seed/man3/400/400",
-      "imageHint": "man portrait"
+      "id": "human-3",
+      "description": "Creative Director (Female)",
+      "imageUrl": "https://picsum.photos/seed/human3/400/400",
+      "imageHint": "woman portrait"
     },
     {
-      "id": "man-4",
+      "id": "human-4",
       "description": "Athletic Fitness Coach (Male)",
-      "imageUrl": "https://picsum.photos/seed/man4/400/400",
+      "imageUrl": "https://picsum.photos/seed/human4/400/400",
       "imageHint": "man portrait"
     },
     {
-      "id": "man-5",
-      "description": "Senior Distinguished Gentleman",
-      "imageUrl": "https://picsum.photos/seed/man5/400/400",
-      "imageHint": "man portrait"
+      "id": "human-5",
+      "description": "Senior Distinguished Lady",
+      "imageUrl": "https://picsum.photos/seed/human5/400/400",
+      "imageHint": "woman portrait"
     },
     {
-      "id": "man-6",
-      "description": "Creative Arts Director (Male)",
-      "imageUrl": "https://picsum.photos/seed/man6/400/400",
+      "id": "human-6",
+      "description": "Academic Researcher (Male)",
+      "imageUrl": "https://picsum.photos/seed/human6/400/400",
       "imageHint": "man portrait"
     }
   ]
