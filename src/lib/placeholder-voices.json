@@ -1,28 +1,27 @@
-
 {
   "placeholderVoices": [
     {
-      "id": "voice-1",
-      "name": "Deep Narrator",
-      "description": "Resonant and authoritative",
+      "id": "male-voice-1",
+      "name": "Deep Baritone (Male)",
+      "description": "Rich, resonant masculine tone for narrations",
       "previewUrl": "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3"
     },
     {
-      "id": "voice-2",
-      "name": "Energetic Reporter",
-      "description": "Fast-paced and clear",
+      "id": "male-voice-2",
+      "name": "Youthful Tenor (Male)",
+      "description": "Energetic and clear male speech pattern",
       "previewUrl": "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-2.mp3"
     },
     {
-      "id": "voice-3",
-      "name": "Calm Assistant",
-      "description": "Soft and helpful",
+      "id": "male-voice-3",
+      "name": "Authoritative Speaker (Male)",
+      "description": "Commanding male presence for presentations",
       "previewUrl": "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-3.mp3"
     },
     {
-      "id": "voice-4",
-      "name": "Tech Guru",
-      "description": "Modern and synthesized",
+      "id": "male-voice-4",
+      "name": "Technical Expert (Male)",
+      "description": "Precise and articulate male instructional voice",
       "previewUrl": "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-4.mp3"
     }
   ]
