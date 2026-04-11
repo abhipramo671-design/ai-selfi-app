@@ -39,7 +39,7 @@ import { generateAIPortrait } from '@/ai/flows/generate-portrait';
 
 export default function AISelfieGenerator() {
   const { user, loading: authLoading } = useUser();
-  const { auth } = useAuth();
+  const auth = useAuth(); // Correctly get the auth instance
   const db = useFirestore();
   
   const [isUploading, setIsUploading] = useState(false);
@@ -61,12 +61,27 @@ export default function AISelfieGenerator() {
   const { data: generations } = useCollection(generationsQuery);
 
   const handleLogin = async () => {
-    if (!auth) return;
+    if (!auth) {
+      toast({ 
+        variant: "destructive", 
+        title: "Auth Error", 
+        description: "Firebase Auth is not initialized. Check your configuration." 
+      });
+      return;
+    }
+    
     try {
-      await signInWithPopup(auth, new GoogleAuthProvider());
+      const provider = new GoogleAuthProvider();
+      provider.setCustomParameters({ prompt: 'select_account' });
+      await signInWithPopup(auth, provider);
       toast({ title: "Welcome!", description: "Successfully signed in with Google." });
-    } catch (error) {
-      toast({ variant: "destructive", title: "Login Failed", description: "Could not authenticate with Google." });
+    } catch (error: any) {
+      console.error("Login Error:", error);
+      toast({ 
+        variant: "destructive", 
+        title: "Login Failed", 
+        description: error.message || "Could not authenticate with Google. Ensure popups are enabled." 
+      });
     }
   };
 
@@ -118,7 +133,7 @@ export default function AISelfieGenerator() {
         uploadUrls.push(url);
         
         // Save metadata to Firestore
-        await addDoc(collection(db, 'users', user.uid, 'uploads'), {
+        addDoc(collection(db, 'users', user.uid, 'uploads'), {
           url,
           storagePath,
           fileName: file.name,
@@ -138,7 +153,7 @@ export default function AISelfieGenerator() {
       });
 
       // 3. Save result to Firestore
-      await addDoc(collection(db, 'users', user.uid, 'generations'), {
+      addDoc(collection(db, 'users', user.uid, 'generations'), {
         url: result.imageUrl,
         prompt: "Professional AI Portrait",
         createdAt: serverTimestamp()
@@ -152,9 +167,13 @@ export default function AISelfieGenerator() {
       // Reset state
       setSelectedFiles([]);
       setPreviews([]);
-    } catch (error) {
+    } catch (error: any) {
       console.error(error);
-      toast({ variant: "destructive", title: "Generation Failed", description: "Something went wrong during the AI process." });
+      toast({ 
+        variant: "destructive", 
+        title: "Generation Failed", 
+        description: error.message || "Something went wrong during the AI process." 
+      });
     } finally {
       setIsGenerating(false);
       setIsUploading(false);
@@ -232,10 +251,6 @@ export default function AISelfieGenerator() {
                     selectedFiles.length > 0 ? "border-primary/40" : "border-white/10 hover:border-primary/40"
                   )}
                   onDragOver={(e) => e.preventDefault()}
-                  onDrop={(e) => {
-                    e.preventDefault();
-                    // Basic drop support can be added here
-                  }}
                 >
                   <input 
                     type="file" 
