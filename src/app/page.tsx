@@ -49,7 +49,6 @@ import { toast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import { liveIdentitySwap } from '@/ai/flows/live-identity-swap';
 import { transformedSelfieCapture } from '@/ai/flows/transformed-selfie-capture';
-import { PlaceHolderImages } from '@/lib/placeholder-images';
 import { PlaceholderVoices } from '@/lib/placeholder-voices';
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
@@ -428,34 +427,8 @@ export default function MimicMeDashboard() {
               
               <TabsContent value="presets" className="space-y-4">
                 <div className="space-y-2">
-                  <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest block mb-2">Biometric Human Faces</label>
-                  <ScrollArea className="w-full whitespace-nowrap rounded-md border border-white/5 p-2 bg-black/20">
-                    <div className="flex w-max space-x-2">
-                      {PlaceHolderImages.map((img) => (
-                        <div 
-                          key={img.id}
-                          className={cn(
-                            "relative w-14 h-14 rounded-md overflow-hidden cursor-pointer border-2 transition-all group",
-                            templateImage === img.imageUrl ? "border-primary scale-95 shadow-[0_0_10px_rgba(124,32,229,0.5)]" : "border-transparent hover:border-white/20"
-                          )}
-                          onClick={() => setTemplateImage(img.imageUrl)}
-                        >
-                          <img src={img.imageUrl} alt={img.description} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" />
-                          {templateImage === img.imageUrl && (
-                            <div className="absolute inset-0 bg-primary/20 flex items-center justify-center backdrop-blur-[1px]">
-                              <Check className="w-4 h-4 text-white" />
-                            </div>
-                          )}
-                        </div>
-                      ))}
-                    </div>
-                    <ScrollBar orientation="horizontal" />
-                  </ScrollArea>
-                </div>
-
-                <div className="space-y-2">
                   <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest block mb-2">Human Voice Models</label>
-                  <ScrollArea className="h-[180px] pr-3">
+                  <ScrollArea className="h-[240px] pr-3">
                     <div className="grid grid-cols-1 gap-1.5">
                       {PlaceholderVoices.map((voice) => (
                         <div 
@@ -471,6 +444,7 @@ export default function MimicMeDashboard() {
                             <p className="font-semibold truncate leading-none mb-1">{voice.name}</p>
                             <p className="text-[9px] text-muted-foreground truncate leading-none">{voice.description}</p>
                           </div>
+                          {templateAudio === voice.previewUrl && <Check className="w-3 h-3 text-accent ml-auto" />}
                         </div>
                       ))}
                     </div>
@@ -480,20 +454,20 @@ export default function MimicMeDashboard() {
 
               <TabsContent value="upload" className="space-y-6">
                 <div className="space-y-2">
-                  <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Custom Biometric Map</label>
+                  <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Custom Human Photo</label>
                   <div 
                     className={cn(
                       "relative aspect-[4/3] rounded-lg border-2 border-dashed border-white/10 flex flex-col items-center justify-center cursor-pointer transition-all hover:border-primary/50 group overflow-hidden bg-black/20",
-                      templateImage && !PlaceHolderImages.some(p => p.imageUrl === templateImage) && "border-solid border-primary/30"
+                      templateImage && "border-solid border-primary/30"
                     )}
                     onClick={() => document.getElementById('imageUpload')?.click()}
                   >
-                    {templateImage && !PlaceHolderImages.some(p => p.imageUrl === templateImage) ? (
+                    {templateImage ? (
                       <img src={templateImage} alt="Custom Template" className="w-full h-full object-cover" />
                     ) : (
                       <>
                         <Upload className="w-5 h-5 text-muted-foreground group-hover:text-primary transition-colors mb-2" />
-                        <span className="text-[10px] text-muted-foreground">Upload Human Photo</span>
+                        <span className="text-[10px] text-muted-foreground">Upload Human Portrait</span>
                       </>
                     )}
                     <input id="imageUpload" type="file" accept="image/*" className="hidden" onChange={(e) => onFileUpload(e, 'image')} />
@@ -501,7 +475,7 @@ export default function MimicMeDashboard() {
                 </div>
 
                 <div className="space-y-2">
-                  <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Custom Voice Profile</label>
+                  <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Custom Voice Sample</label>
                   <div 
                     className={cn(
                       "relative h-24 rounded-lg border-2 border-dashed border-white/10 flex flex-col items-center justify-center cursor-pointer transition-all hover:border-accent/50 group overflow-hidden bg-black/20",
@@ -512,13 +486,13 @@ export default function MimicMeDashboard() {
                     {templateAudio && !PlaceholderVoices.some(v => v.previewUrl === templateAudio) ? (
                       <div className="flex flex-col items-center gap-1">
                         <FileAudio className="w-5 h-5 text-accent animate-pulse" />
-                        <span className="text-[10px] text-accent font-bold">Custom Profile Attached</span>
+                        <span className="text-[10px] text-accent font-bold">Custom Voice Attached</span>
                         <span className="text-[9px] text-muted-foreground">Ready for Synthesis</span>
                       </div>
                     ) : (
                       <>
                         <Mic className="w-5 h-5 text-muted-foreground group-hover:text-accent transition-colors mb-2" />
-                        <span className="text-[10px] text-muted-foreground">Upload Human Voice Sample</span>
+                        <span className="text-[10px] text-muted-foreground">Upload Audio Sample</span>
                       </>
                     )}
                     <input id="audioUpload" type="file" accept="audio/*" className="hidden" onChange={(e) => onFileUpload(e, 'audio')} />
@@ -574,12 +548,12 @@ export default function MimicMeDashboard() {
                 {isRecording && (
                   <Badge variant="destructive" className="gap-1.5 px-3 py-1 text-[10px] font-bold tracking-wider animate-pulse shadow-lg">
                     <Circle className="w-3 h-3 fill-current" />
-                    REC 00:00:01
+                    REC ACTIVE
                   </Badge>
                 )}
               </div>
 
-              {/* Viewfinder HUD Controls - Mimics Mobile Camera App */}
+              {/* Viewfinder HUD Controls */}
               <div className="absolute bottom-10 left-0 w-full flex justify-center items-center gap-6 z-30 opacity-0 group-hover:opacity-100 transition-all duration-300 translate-y-2 group-hover:translate-y-0">
                 <Button 
                   size="icon" 
@@ -628,7 +602,7 @@ export default function MimicMeDashboard() {
               </div>
               <h2 className="text-3xl font-bold mb-3 tracking-tighter bg-gradient-to-r from-white to-white/60 bg-clip-text text-transparent">MimicMe AI</h2>
               <p className="text-muted-foreground mb-10 max-w-sm mx-auto text-sm leading-relaxed">
-                Connect your mobile sensor to begin real-time human identity and voice transformation.
+                Connect your hardware sensor to begin real-time identity and voice transformation.
               </p>
               <Button 
                 size="lg" 
