@@ -1,27 +1,28 @@
+
 {
   "placeholderVoices": [
     {
       "id": "male-voice-1",
       "name": "Deep Baritone (Male)",
-      "description": "Rich, resonant masculine tone for narrations",
+      "description": "Rich, resonant masculine tone for deep narrations",
       "previewUrl": "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3"
     },
     {
       "id": "male-voice-2",
       "name": "Youthful Tenor (Male)",
-      "description": "Energetic and clear male speech pattern",
+      "description": "Energetic and clear male speech pattern for casual use",
       "previewUrl": "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-2.mp3"
     },
     {
       "id": "male-voice-3",
       "name": "Authoritative Speaker (Male)",
-      "description": "Commanding male presence for presentations",
+      "description": "Commanding male presence for professional presentations",
       "previewUrl": "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-3.mp3"
     },
     {
       "id": "male-voice-4",
       "name": "Technical Expert (Male)",
-      "description": "Precise and articulate male instructional voice",
+      "description": "Precise and articulate male voice for tutorials",
       "previewUrl": "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-4.mp3"
     }
   ]
