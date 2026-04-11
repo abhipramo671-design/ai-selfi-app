@@ -24,7 +24,8 @@ import {
   Sliders,
   Sparkles,
   Waves,
-  Loader2
+  Loader2,
+  Volume2
 } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
@@ -46,6 +47,7 @@ import {
 import { toast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import { liveIdentitySwap } from '@/ai/flows/live-identity-swap';
+import { transformedSelfieCapture } from '@/ai/flows/transformed-selfie-capture';
 import { PlaceHolderImages } from '@/lib/placeholder-images';
 import { PlaceholderVoices } from '@/lib/placeholder-voices';
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
@@ -53,9 +55,11 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 
 export default function MimicMeDashboard() {
   const [aiEnabled, setAiEnabled] = useState(false);
+  const [voiceEnabled, setVoiceEnabled] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
   const [cameraActive, setCameraActive] = useState(false);
   const [isInitializing, setIsInitializing] = useState(false);
+  const [isProcessingAI, setIsProcessingAI] = useState(false);
   const [hasCameraPermission, setHasCameraPermission] = useState<boolean | null>(null);
   const [templateImage, setTemplateImage] = useState<string | null>(null);
   const [templateAudio, setTemplateAudio] = useState<string | null>(null);
@@ -107,7 +111,6 @@ export default function MimicMeDashboard() {
 
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
-        // Explicitly call play to handle browsers that block autoplay
         await videoRef.current.play();
         setHasCameraPermission(true);
         setCameraActive(true);
@@ -137,6 +140,7 @@ export default function MimicMeDashboard() {
   const handleResetSystem = () => {
     stopCamera();
     setAiEnabled(false);
+    setVoiceEnabled(false);
     setTemplateImage(null);
     setTemplateAudio(null);
     setProcessedFrame(null);
@@ -161,7 +165,7 @@ export default function MimicMeDashboard() {
     const ctx = canvas.getContext('2d');
     const displayCtx = displayCanvas.getContext('2d');
 
-    if (ctx && displayCtx && video.readyState >= 2) { // HAVE_CURRENT_DATA or better
+    if (ctx && displayCtx && video.readyState >= 2) {
       if (canvas.width !== video.videoWidth || canvas.height !== video.videoHeight) {
         canvas.width = video.videoWidth;
         canvas.height = video.videoHeight;
@@ -220,7 +224,7 @@ export default function MimicMeDashboard() {
               lastProcessedTimeRef.current = now;
             }
           } catch (error) {
-            // Silently handle processing delays
+            // Processing delay
           }
         }
       }
@@ -241,16 +245,33 @@ export default function MimicMeDashboard() {
   }, [renderLoop]);
 
   const handleCapture = async () => {
-    if (!displayCanvasRef.current) return;
+    if (!displayCanvasRef.current || !canvasRef.current) return;
+    
+    setIsProcessingAI(true);
     try {
-      const dataUrl = displayCanvasRef.current.toDataURL('image/png');
+      let finalImageUrl;
+      
+      if (aiEnabled && templateImage) {
+        const frameData = canvasRef.current.toDataURL('image/jpeg', 0.8);
+        const result = await transformedSelfieCapture({
+          currentCameraFrame: frameData,
+          templateIdentityImage: templateImage
+        });
+        finalImageUrl = result.transformedSelfie;
+      } else {
+        finalImageUrl = displayCanvasRef.current.toDataURL('image/png');
+      }
+
       const link = document.createElement('a');
-      link.href = dataUrl;
+      link.href = finalImageUrl;
       link.download = `mimicme_selfie_${Date.now()}.png`;
       link.click();
-      toast({ title: "Selfie Saved", description: "Identity captured to storage." });
+      toast({ title: "Selfie Captured", description: "Identity transformation complete." });
     } catch (err) {
-      toast({ variant: "destructive", title: "Capture Error", description: "Buffer sync failed." });
+      console.error(err);
+      toast({ variant: "destructive", title: "Capture Error", description: "AI processing failed." });
+    } finally {
+      setIsProcessingAI(false);
     }
   };
 
@@ -280,7 +301,7 @@ export default function MimicMeDashboard() {
       link.href = url;
       link.download = `mimicme_stream_${Date.now()}.webm`;
       link.click();
-      toast({ title: "Recording Exported", description: "Neural stream saved successfully." });
+      toast({ title: "Recording Exported", description: "Neural stream and voice saved." });
     };
 
     recorder.start();
@@ -323,28 +344,59 @@ export default function MimicMeDashboard() {
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4 px-4 pb-4">
-            <TooltipProvider>
-              <div className="flex items-center justify-between p-3 bg-secondary/50 rounded-lg border border-white/5">
-                <span className="font-medium text-sm">Identity Replacement</span>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <div className="flex items-center">
-                      <Switch 
-                        checked={aiEnabled} 
-                        onCheckedChange={setAiEnabled}
-                        disabled={!cameraActive || !templateImage}
-                        className="data-[state=checked]:bg-primary"
-                      />
-                    </div>
-                  </TooltipTrigger>
-                  {(!cameraActive || !templateImage) && (
-                    <TooltipContent side="right" className="bg-destructive text-destructive-foreground border-none">
-                      {!cameraActive ? "Initialize camera first" : "Select a template identity"}
-                    </TooltipContent>
-                  )}
-                </Tooltip>
-              </div>
-            </TooltipProvider>
+            <div className="space-y-3">
+              <TooltipProvider>
+                <div className="flex items-center justify-between p-3 bg-secondary/50 rounded-lg border border-white/5">
+                  <div className="flex items-center gap-2">
+                    <User className="w-4 h-4 text-primary" />
+                    <span className="font-medium text-xs">Identity Mask</span>
+                  </div>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <div className="flex items-center">
+                        <Switch 
+                          checked={aiEnabled} 
+                          onCheckedChange={setAiEnabled}
+                          disabled={!cameraActive || !templateImage}
+                          className="data-[state=checked]:bg-primary"
+                        />
+                      </div>
+                    </TooltipTrigger>
+                    {(!cameraActive || !templateImage) && (
+                      <TooltipContent side="right" className="bg-destructive text-destructive-foreground border-none">
+                        {!cameraActive ? "Initialize camera first" : "Select a template identity"}
+                      </TooltipContent>
+                    )}
+                  </Tooltip>
+                </div>
+              </TooltipProvider>
+
+              <TooltipProvider>
+                <div className="flex items-center justify-between p-3 bg-secondary/50 rounded-lg border border-white/5">
+                  <div className="flex items-center gap-2">
+                    <Mic className="w-4 h-4 text-accent" />
+                    <span className="font-medium text-xs">Voice Mimic (RVC)</span>
+                  </div>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <div className="flex items-center">
+                        <Switch 
+                          checked={voiceEnabled} 
+                          onCheckedChange={setVoiceEnabled}
+                          disabled={!cameraActive || !templateAudio}
+                          className="data-[state=checked]:bg-accent"
+                        />
+                      </div>
+                    </TooltipTrigger>
+                    {(!cameraActive || !templateAudio) && (
+                      <TooltipContent side="right" className="bg-destructive text-destructive-foreground border-none">
+                        {!cameraActive ? "Initialize microphone first" : "Select a voice model"}
+                      </TooltipContent>
+                    )}
+                  </Tooltip>
+                </div>
+              </TooltipProvider>
+            </div>
             
             <div className="grid grid-cols-2 gap-2 text-xs">
               <div className="p-2 rounded bg-muted/30 border border-white/5">
@@ -356,23 +408,13 @@ export default function MimicMeDashboard() {
                 <p className="text-accent font-mono font-bold">{aiEnabled ? `${fps}` : (cameraActive ? '30' : '0')}</p>
               </div>
             </div>
-
-            <div className="space-y-1">
-              <div className="flex justify-between text-[10px] mb-1">
-                <span className="text-muted-foreground uppercase font-bold tracking-widest">Process Integrity</span>
-                <span className={cn("font-bold", cameraActive ? "text-primary" : "text-muted-foreground")}>
-                  {cameraActive ? "NOMINAL" : "OFFLINE"}
-                </span>
-              </div>
-              <Progress value={cameraActive ? 100 : 0} className="h-1 bg-muted/50" />
-            </div>
           </CardContent>
         </Card>
 
         <Card className="border-border/40 bg-card/40 backdrop-blur-xl overflow-hidden flex-1">
           <CardHeader className="pb-2 px-4">
             <CardTitle className="text-base flex items-center gap-2">
-              <User className="text-accent w-4 h-4" />
+              <Sliders className="text-accent w-4 h-4" />
               Identity Templates
             </CardTitle>
           </CardHeader>
@@ -385,7 +427,7 @@ export default function MimicMeDashboard() {
               
               <TabsContent value="presets" className="space-y-4">
                 <div className="space-y-2">
-                  <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest block mb-2">Neural Face Profiles</label>
+                  <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest block mb-2">Biometric Faces</label>
                   <ScrollArea className="w-full whitespace-nowrap rounded-md border border-white/5 p-2 bg-black/20">
                     <div className="flex w-max space-x-2">
                       {PlaceHolderImages.map((img) => (
@@ -400,7 +442,7 @@ export default function MimicMeDashboard() {
                           <img src={img.imageUrl} alt={img.description} className="w-full h-full object-cover grayscale-[0.2] group-hover:grayscale-0 transition-all" />
                           {templateImage === img.imageUrl && (
                             <div className="absolute inset-0 bg-primary/20 flex items-center justify-center backdrop-blur-[1px]">
-                              <Check className="w-5 h-5 text-white" />
+                              <Check className="w-4 h-4 text-white" />
                             </div>
                           )}
                         </div>
@@ -411,7 +453,7 @@ export default function MimicMeDashboard() {
                 </div>
 
                 <div className="space-y-2">
-                  <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest block mb-2">Voice Synthetic Models</label>
+                  <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest block mb-2">Voice Models</label>
                   <ScrollArea className="h-[180px] pr-3">
                     <div className="grid grid-cols-1 gap-1.5">
                       {PlaceholderVoices.map((voice) => (
@@ -450,7 +492,7 @@ export default function MimicMeDashboard() {
                     ) : (
                       <>
                         <Upload className="w-5 h-5 text-muted-foreground group-hover:text-primary transition-colors mb-2" />
-                        <span className="text-[10px] text-muted-foreground">Upload Biometric Source</span>
+                        <span className="text-[10px] text-muted-foreground">Upload Source Photo</span>
                       </>
                     )}
                     <input id="imageUpload" type="file" accept="image/*" className="hidden" onChange={(e) => onFileUpload(e, 'image')} />
@@ -467,9 +509,9 @@ export default function MimicMeDashboard() {
         {hasCameraPermission === false && (
           <Alert variant="destructive" className="bg-destructive/10 border-destructive/20 text-destructive animate-in fade-in slide-in-from-top-4">
             <AlertCircle className="h-4 w-4" />
-            <AlertTitle>Hardware Access Error</AlertTitle>
+            <AlertTitle>Hardware Error</AlertTitle>
             <AlertDescription>
-              Feed initialization failed. Please ensure your camera is connected and you have granted access permissions.
+              Feed failed. Ensure your camera is connected and access is granted.
             </AlertDescription>
           </Alert>
         )}
@@ -479,39 +521,54 @@ export default function MimicMeDashboard() {
             <>
               <canvas 
                 ref={displayCanvasRef} 
-                className="w-full h-full object-contain" 
+                className={cn("w-full h-full object-contain transition-opacity duration-300", isProcessingAI ? "opacity-30 grayscale" : "opacity-100")} 
               />
               
               <div className="scan-line" />
+
+              {isProcessingAI && (
+                <div className="absolute inset-0 flex flex-col items-center justify-center z-40 bg-black/40 backdrop-blur-sm">
+                  <div className="w-20 h-20 rounded-full border-t-4 border-primary animate-spin mb-4" />
+                  <p className="text-primary font-bold tracking-widest animate-pulse uppercase text-sm">Synthesizing Identity...</p>
+                </div>
+              )}
               
               {/* Telemetry Overlays */}
               <div className="absolute top-4 left-4 flex flex-col gap-2 z-20">
                 <Badge variant={aiEnabled ? "default" : "secondary"} className={cn("gap-1.5 px-3 py-1 text-[10px] font-bold tracking-wider backdrop-blur-md", aiEnabled && "bg-primary animate-pulse shadow-lg")}>
                   <Zap className="w-3 h-3 fill-current" />
-                  {aiEnabled ? "NEURAL MAPPING ACTIVE" : "STANDARD PASS-THROUGH"}
+                  {aiEnabled ? "NEURAL OVERLAY ON" : "STANDARD MODE"}
                 </Badge>
+                {voiceEnabled && (
+                  <Badge variant="outline" className="gap-1.5 px-3 py-1 text-[10px] font-bold tracking-wider bg-accent/20 text-accent border-accent/40 backdrop-blur-md">
+                    <Volume2 className="w-3 h-3 fill-current" />
+                    VOICE MASK ACTIVE
+                  </Badge>
+                )}
                 {isRecording && (
                   <Badge variant="destructive" className="gap-1.5 px-3 py-1 text-[10px] font-bold tracking-wider animate-pulse shadow-lg">
                     <Circle className="w-3 h-3 fill-current" />
-                    RECORDING STREAM
+                    REC 00:00:01
                   </Badge>
                 )}
               </div>
 
-              {/* Viewfinder HUD Controls */}
+              {/* Viewfinder HUD Controls - Mimics Mobile Camera App */}
               <div className="absolute bottom-10 left-0 w-full flex justify-center items-center gap-6 z-30 opacity-0 group-hover:opacity-100 transition-all duration-300 translate-y-2 group-hover:translate-y-0">
                 <Button 
                   size="icon" 
                   variant="outline" 
+                  disabled={isProcessingAI}
                   className="rounded-full w-12 h-12 bg-black/60 border-white/10 hover:bg-black/80 backdrop-blur-md transition-all active:scale-90"
                   onClick={handleCapture}
                 >
-                  <ImageIcon className="w-5 h-5 text-white" />
+                  <Camera className="w-5 h-5 text-white" />
                 </Button>
 
                 <div className="relative">
                   <Button 
                     size="lg" 
+                    disabled={isProcessingAI}
                     className={cn(
                       "rounded-full w-20 h-20 shadow-2xl transition-all active:scale-95 border-4",
                       isRecording ? "bg-red-600 border-white/40" : "bg-white border-primary"
@@ -525,6 +582,7 @@ export default function MimicMeDashboard() {
                 <Button 
                   size="icon" 
                   variant="outline" 
+                  disabled={isProcessingAI}
                   className="rounded-full w-12 h-12 bg-black/60 border-white/10 hover:bg-black/80 backdrop-blur-md transition-all active:scale-90"
                   onClick={() => toast({ title: "Lens Swapped", description: "Rotating biometric sensor." })}
                 >
@@ -538,22 +596,21 @@ export default function MimicMeDashboard() {
                 {isInitializing ? (
                   <Loader2 className="w-10 h-10 text-primary animate-spin" />
                 ) : (
-                  <Camera className="w-10 h-10 text-primary" />
+                  <Smartphone className="w-10 h-10 text-primary" />
                 )}
                 <div className="absolute inset-0 rounded-full border border-primary/40 animate-ping opacity-20" />
               </div>
-              <h2 className="text-3xl font-bold mb-3 tracking-tighter bg-gradient-to-r from-white to-white/60 bg-clip-text text-transparent">Identity Mimic Engine</h2>
+              <h2 className="text-3xl font-bold mb-3 tracking-tighter bg-gradient-to-r from-white to-white/60 bg-clip-text text-transparent">MimicMe AI</h2>
               <p className="text-muted-foreground mb-10 max-w-sm mx-auto text-sm leading-relaxed">
-                Experience the next generation of real-time identity manipulation. 
-                Initialize your feed to begin neural transformation.
+                Connect your mobile sensor to begin real-time identity and voice transformation.
               </p>
               <Button 
                 size="lg" 
                 onClick={startCamera} 
                 disabled={isInitializing}
-                className="bg-primary hover:bg-primary/90 px-10 rounded-full shadow-2xl h-14 text-base font-bold transition-all hover:scale-105 active:scale-95 disabled:opacity-50"
+                className="bg-primary hover:bg-primary/90 px-10 rounded-full shadow-2xl h-14 text-base font-bold transition-all hover:scale-105 active:scale-95"
               >
-                {isInitializing ? "Initializing Sensor..." : "Initialize Neural Feed"}
+                {isInitializing ? "Connecting Sensor..." : "Launch Camera Feed"}
               </Button>
             </div>
           )}
@@ -572,9 +629,9 @@ export default function MimicMeDashboard() {
             </div>
             <div className="h-8 w-px bg-white/5" />
             <div className="flex flex-col">
-              <span className="text-[10px] text-muted-foreground uppercase font-black tracking-tighter opacity-70">Neural Encryption</span>
+              <span className="text-[10px] text-muted-foreground uppercase font-black tracking-tighter opacity-70">Neural Mode</span>
               <span className={cn("text-[10px] font-bold", cameraActive ? "text-primary" : "text-muted-foreground")}>
-                {cameraActive ? "AES-256 BIOMETRIC PROTECTED" : "WAITING FOR SYNC"}
+                {aiEnabled ? "FACE + VOICE MASKED" : "UNMASKED"}
               </span>
             </div>
           </div>
@@ -613,9 +670,9 @@ export default function MimicMeDashboard() {
                     <div className="flex justify-between items-center">
                       <label className="text-sm font-bold flex items-center gap-2 tracking-tight">
                         <Sparkles className="w-4 h-4 text-accent" />
-                        Edge Smoothing
+                        Face Edge Smoothing
                       </label>
-                      <span className="text-xs font-mono bg-white/5 border border-white/5 px-2 py-0.5 rounded text-accent">{smoothing}%</span>
+                      <span className="text-xs font-mono bg-white/5 px-2 py-0.5 rounded text-accent">{smoothing}%</span>
                     </div>
                     <Slider 
                       value={[smoothing]} 
@@ -624,16 +681,15 @@ export default function MimicMeDashboard() {
                       step={1} 
                       className="py-1"
                     />
-                    <p className="text-[10px] text-muted-foreground/60 leading-relaxed italic">Adjusts the Gaussian blur radius at the biometric intersection boundaries.</p>
                   </div>
 
                   <div className="space-y-4">
                     <div className="flex justify-between items-center">
                       <label className="text-sm font-bold flex items-center gap-2 tracking-tight">
                         <Zap className="w-4 h-4 text-primary" />
-                        Temporal Coherence
+                        Neural Stability
                       </label>
-                      <span className="text-xs font-mono bg-white/5 border border-white/5 px-2 py-0.5 rounded text-primary">{enhancement}%</span>
+                      <span className="text-xs font-mono bg-white/5 px-2 py-0.5 rounded text-primary">{enhancement}%</span>
                     </div>
                     <Slider 
                       value={[enhancement]} 
@@ -642,16 +698,15 @@ export default function MimicMeDashboard() {
                       step={1} 
                       className="py-1"
                     />
-                    <p className="text-[10px] text-muted-foreground/60 leading-relaxed italic">Controls the frame-to-frame stability of expression and pose mapping.</p>
                   </div>
 
                   <div className="space-y-4">
                     <div className="flex justify-between items-center">
                       <label className="text-sm font-bold flex items-center gap-2 tracking-tight">
                         <Waves className="w-4 h-4 text-accent" />
-                        RVC Clarity
+                        Voice Clarity (RVC)
                       </label>
-                      <span className="text-xs font-mono bg-white/5 border border-white/5 px-2 py-0.5 rounded text-accent">{voiceClarity}%</span>
+                      <span className="text-xs font-mono bg-white/5 px-2 py-0.5 rounded text-accent">{voiceClarity}%</span>
                     </div>
                     <Slider 
                       value={[voiceClarity]} 
@@ -660,13 +715,12 @@ export default function MimicMeDashboard() {
                       step={1} 
                       className="py-1"
                     />
-                    <p className="text-[10px] text-muted-foreground/60 leading-relaxed italic">Sets the noise reduction and pitch stabilization intensity for voice conversion.</p>
                   </div>
                 </div>
 
                 <DialogFooter className="mt-8">
-                  <Button onClick={() => setShowConfig(false)} className="w-full bg-primary hover:bg-primary/90 h-12 font-bold text-base rounded-xl shadow-xl shadow-primary/20">
-                    Apply Neural Weights
+                  <Button onClick={() => setShowConfig(false)} className="w-full bg-primary hover:bg-primary/90 h-12 font-bold text-base rounded-xl">
+                    Apply Weights
                   </Button>
                 </DialogFooter>
               </DialogContent>
