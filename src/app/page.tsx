@@ -83,6 +83,8 @@ export default function AISelfieGenerator() {
         errorMessage = `Domain "${window.location.hostname}" is not authorized. Please add it to your Firebase Console under Authentication > Settings > Authorized domains.`;
       } else if (error.code === 'auth/operation-not-allowed') {
         errorMessage = "Google sign-in is not enabled. Please enable it in the Firebase Console.";
+      } else if (error.code === 'auth/invalid-api-key') {
+        errorMessage = "Invalid API key. Please check your Firebase configuration.";
       }
 
       toast({ 
