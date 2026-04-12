@@ -39,7 +39,7 @@ import { generateAIPortrait } from '@/ai/flows/generate-portrait';
 
 export default function AISelfieGenerator() {
   const { user, loading: authLoading } = useUser();
-  const auth = useAuth(); // Correctly get the auth instance
+  const auth = useAuth();
   const db = useFirestore();
   
   const [isUploading, setIsUploading] = useState(false);
@@ -48,7 +48,6 @@ export default function AISelfieGenerator() {
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [previews, setPreviews] = useState<string[]>([]);
 
-  // Real-time generated images
   const generationsQuery = React.useMemo(() => {
     if (!db || !user) return null;
     return query(
@@ -65,7 +64,7 @@ export default function AISelfieGenerator() {
       toast({ 
         variant: "destructive", 
         title: "Auth Error", 
-        description: "Firebase Auth is not initialized. Check your configuration." 
+        description: "Firebase Auth is not initialized." 
       });
       return;
     }
@@ -74,13 +73,22 @@ export default function AISelfieGenerator() {
       const provider = new GoogleAuthProvider();
       provider.setCustomParameters({ prompt: 'select_account' });
       await signInWithPopup(auth, provider);
-      toast({ title: "Welcome!", description: "Successfully signed in with Google." });
+      toast({ title: "Welcome!", description: "Successfully signed in." });
     } catch (error: any) {
       console.error("Login Error:", error);
+      
+      let errorMessage = error.message || "Could not authenticate with Google.";
+      
+      if (error.code === 'auth/unauthorized-domain') {
+        errorMessage = `Domain "${window.location.hostname}" is not authorized. Please add it to your Firebase Console under Authentication > Settings > Authorized domains.`;
+      } else if (error.code === 'auth/operation-not-allowed') {
+        errorMessage = "Google sign-in is not enabled. Please enable it in the Firebase Console.";
+      }
+
       toast({ 
         variant: "destructive", 
         title: "Login Failed", 
-        description: error.message || "Could not authenticate with Google. Ensure popups are enabled." 
+        description: errorMessage
       });
     }
   };
@@ -122,7 +130,6 @@ export default function AISelfieGenerator() {
       const storage = getStorage();
       const uploadUrls: string[] = [];
 
-      // 1. Upload to Storage
       for (let i = 0; i < selectedFiles.length; i++) {
         const file = selectedFiles[i];
         const storagePath = `users/${user.uid}/uploads/${Date.now()}_${file.name}`;
@@ -132,7 +139,6 @@ export default function AISelfieGenerator() {
         const url = await getDownloadURL(fileRef);
         uploadUrls.push(url);
         
-        // Save metadata to Firestore
         addDoc(collection(db, 'users', user.uid, 'uploads'), {
           url,
           storagePath,
@@ -146,13 +152,11 @@ export default function AISelfieGenerator() {
       setIsUploading(false);
       toast({ title: "Upload Complete", description: "Analyzing your features for the portrait..." });
 
-      // 2. Call Genkit Flow
       const result = await generateAIPortrait({
         imageUrls: uploadUrls,
         userId: user.uid
       });
 
-      // 3. Save result to Firestore
       addDoc(collection(db, 'users', user.uid, 'generations'), {
         url: result.imageUrl,
         prompt: "Professional AI Portrait",
@@ -164,7 +168,6 @@ export default function AISelfieGenerator() {
         description: "Your AI masterpiece is ready in the gallery." 
       });
       
-      // Reset state
       setSelectedFiles([]);
       setPreviews([]);
     } catch (error: any) {
@@ -212,7 +215,6 @@ export default function AISelfieGenerator() {
 
   return (
     <div className="min-h-screen bg-background text-foreground pb-20">
-      {/* Header */}
       <header className="sticky top-0 z-50 w-full border-b bg-background/80 backdrop-blur-md">
         <div className="container mx-auto px-4 h-16 flex items-center justify-between">
           <div className="flex items-center gap-2">
@@ -234,7 +236,6 @@ export default function AISelfieGenerator() {
 
       <main className="container mx-auto px-4 py-8 max-w-5xl">
         <div className="grid gap-8">
-          {/* Upload Section */}
           <section>
             <Card className="border-primary/10 bg-card/40 backdrop-blur-sm overflow-hidden">
               <CardHeader>
@@ -332,7 +333,6 @@ export default function AISelfieGenerator() {
             </Card>
           </section>
 
-          {/* Results Gallery */}
           <section>
             <div className="flex items-center justify-between mb-6">
               <h2 className="text-2xl font-bold tracking-tight flex items-center gap-2">
