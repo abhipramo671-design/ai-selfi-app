@@ -1,29 +1,28 @@
-
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 @layer base {
   :root {
-    --background: 240 10% 3.9%;
-    --foreground: 0 0% 98%;
-    --card: 240 10% 3.9%;
-    --card-foreground: 0 0% 98%;
-    --popover: 240 10% 3.9%;
-    --popover-foreground: 0 0% 98%;
-    --primary: 263.4 70% 50.4%;
+    --background: 215 25% 4%;
+    --foreground: 210 40% 98%;
+    --card: 215 25% 6%;
+    --card-foreground: 210 40% 98%;
+    --popover: 215 25% 4%;
+    --popover-foreground: 210 40% 98%;
+    --primary: 38 92% 50%;
     --primary-foreground: 210 40% 98%;
-    --secondary: 240 3.7% 15.9%;
-    --secondary-foreground: 0 0% 98%;
-    --muted: 240 3.7% 15.9%;
-    --muted-foreground: 240 5% 64.9%;
-    --accent: 240 3.7% 15.9%;
-    --accent-foreground: 0 0% 98%;
+    --secondary: 215 25% 12%;
+    --secondary-foreground: 210 40% 98%;
+    --muted: 215 25% 12%;
+    --muted-foreground: 215 20% 65%;
+    --accent: 38 92% 50%;
+    --accent-foreground: 210 40% 98%;
     --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 0 0% 98%;
-    --border: 240 3.7% 15.9%;
-    --input: 240 3.7% 15.9%;
-    --ring: 263.4 70% 50.4%;
+    --destructive-foreground: 210 40% 98%;
+    --border: 215 25% 12%;
+    --input: 215 25% 12%;
+    --ring: 38 92% 50%;
     --radius: 1rem;
   }
 }
@@ -33,12 +32,12 @@
     @apply border-border;
   }
   body {
-    @apply bg-background text-foreground font-body antialiased;
+    @apply bg-background text-foreground font-body antialiased selection:bg-primary/30 selection:text-primary-foreground;
   }
 }
 
 .glass-morphism {
-  @apply bg-white/5 backdrop-blur-xl border border-white/10;
+  @apply bg-white/[0.03] backdrop-blur-xl border border-white/10 shadow-2xl;
 }
 
 .animate-gradient {
@@ -50,4 +49,17 @@
   0% { background-position: 0% 50%; }
   50% { background-position: 100% 50%; }
   100% { background-position: 0% 50%; }
+}
+
+::-webkit-scrollbar {
+  width: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  @apply bg-white/10 rounded-full;
+}
+::-webkit-scrollbar-thumb:hover {
+  @apply bg-primary/50;
 }
