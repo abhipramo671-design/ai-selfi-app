@@ -9,7 +9,8 @@
     "build": "NODE_ENV=production next build",
     "start": "next start",
     "lint": "next lint",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "setup:git": "git config --global user.email 'abhipramo671@gmail.com'"
   },
   "dependencies": {
     "@genkit-ai/google-genai": "^1.28.0",
