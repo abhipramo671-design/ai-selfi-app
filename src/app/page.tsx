@@ -1,7 +1,7 @@
 
 "use client";
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect } from 'react';
 import { 
   Zap,
   ArrowRight,
@@ -26,37 +26,29 @@ export default function LandingPage() {
   const { user, loading: authLoading } = useUser();
   const auth = useAuth();
   const router = useRouter();
-  const [isRedirecting, setIsRedirecting] = useState(false);
 
-  // Handle post-redirect results
+  // Handle post-redirect results and existing session
   useEffect(() => {
-    if (auth) {
-      getRedirectResult(auth)
-        .then((result) => {
-          if (result && result.user) {
-            router.replace('/dashboard');
-          }
-        })
-        .catch((error) => {
-          console.error("Auth Redirect Error:", error);
-          if (error.code === 'auth/unauthorized-domain') {
-            toast({
-              variant: "destructive",
-              title: "Unauthorized Domain",
-              description: "Please ensure this domain is added to Authorized Domains in Firebase Console.",
-            });
-          } else {
-            toast({
-              variant: "destructive",
-              title: "Login Error",
-              description: error.message || "Failed to complete sign-in.",
-            });
-          }
+    if (!auth) return;
+
+    // Check if we just returned from a redirect
+    getRedirectResult(auth)
+      .then((result) => {
+        if (result?.user) {
+          router.replace('/dashboard');
+        }
+      })
+      .catch((error) => {
+        console.error("Auth Redirect Error:", error);
+        toast({
+          variant: "destructive",
+          title: "Login Error",
+          description: error.message || "Failed to complete sign-in.",
         });
-    }
+      });
   }, [auth, router]);
 
-  // Handle existing session
+  // If user is already authenticated, move to dashboard
   useEffect(() => {
     if (user && !authLoading) {
       router.replace('/dashboard');
@@ -65,13 +57,11 @@ export default function LandingPage() {
 
   const handleLogin = async () => {
     if (!auth) return;
-    setIsRedirecting(true);
     try {
       const provider = new GoogleAuthProvider();
       provider.setCustomParameters({ prompt: 'select_account' });
       await signInWithRedirect(auth, provider);
     } catch (error: any) {
-      setIsRedirecting(false);
       console.error("Login Initiation Error:", error);
       toast({ 
         variant: "destructive", 
@@ -81,13 +71,14 @@ export default function LandingPage() {
     }
   };
 
-  if (authLoading || user || isRedirecting) {
+  // Show a full-screen loader if auth is still processing or if we're already logged in
+  if (authLoading || user) {
     return (
       <div className="min-h-screen bg-[#020617] flex items-center justify-center">
         <div className="text-center space-y-4">
           <Loader2 className="w-10 h-10 animate-spin text-amber-500 mx-auto" />
           <p className="text-slate-400 font-bold animate-pulse">
-            {isRedirecting ? "Connecting to Google..." : "Entering mimicme studio..."}
+            Entering mimicme studio...
           </p>
         </div>
       </div>
