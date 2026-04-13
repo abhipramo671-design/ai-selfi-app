@@ -1,7 +1,6 @@
-
 "use client";
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { 
   Upload, 
   Sparkles, 
@@ -12,16 +11,25 @@ import {
   CheckCircle2,
   Plus,
   Zap,
-  User as UserIcon,
   Image as ImageIcon,
   ChevronRight,
-  Info
+  Info,
+  Camera,
+  Share2,
+  Copy,
+  ArrowRight,
+  Smartphone,
+  Layers,
+  ShieldCheck,
+  RefreshCw,
+  X,
+  FlipHorizontal
 } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Slider } from "@/components/ui/slider";
 import { toast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import { useUser, useAuth, useFirestore, useCollection } from '@/firebase';
@@ -33,6 +41,8 @@ import {
 import { 
   collection, 
   addDoc, 
+  deleteDoc,
+  doc,
   serverTimestamp, 
   query, 
   orderBy,
@@ -42,9 +52,12 @@ import { getStorage, ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { generateAIPortrait } from '@/ai/flows/generate-portrait';
 
 const STYLES = [
-  { id: 'realistic', label: 'Realistic', description: 'Professional studio headshot', icon: '👔' },
-  { id: 'anime', label: 'Anime', description: 'Ghibli-inspired art', icon: '🎨' },
-  { id: 'cartoon', label: 'Cartoon', description: '3D Pixar-style character', icon: '🧸' },
+  { id: 'realistic', label: 'Realistic', icon: '👔', hint: 'Studio Portrait' },
+  { id: 'anime', label: 'Anime', icon: '🎨', hint: 'Ghibli Style' },
+  { id: 'cartoon', label: 'Cartoon', icon: '🧸', hint: '3D Character' },
+  { id: 'cyberpunk', label: 'Cyberpunk', icon: '🌆', hint: 'Neon Future' },
+  { id: 'oil-painting', label: 'Oil Painting', icon: '🖼️', hint: 'Fine Art' },
+  { id: 'sketch', label: 'Sketch', icon: '✏️', hint: 'Charcoal' },
 ];
 
 export default function AISelfieGenerator() {
@@ -57,14 +70,22 @@ export default function AISelfieGenerator() {
   const [uploadProgress, setUploadProgress] = useState(0);
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [previews, setPreviews] = useState<string[]>([]);
-  const [selectedStyle, setSelectedStyle] = useState<'realistic' | 'anime' | 'cartoon'>('realistic');
+  const [selectedStyle, setSelectedStyle] = useState<any>('realistic');
+  const [intensity, setIntensity] = useState(50);
+  const [isDragging, setIsDragging] = useState(false);
+  
+  // Camera State
+  const [showCamera, setShowCamera] = useState(false);
+  const [cameraStream, setCameraStream] = useState<MediaStream | null>(null);
+  const [facingMode, setFacingMode] = useState<'user' | 'environment'>('user');
+  const videoRef = useRef<HTMLVideoElement>(null);
 
   const generationsQuery = useMemo(() => {
     if (!db || !user) return null;
     return query(
       collection(db, 'users', user.uid, 'generations'),
       orderBy('createdAt', 'desc'),
-      limit(12)
+      limit(24)
     );
   }, [db, user]);
 
@@ -75,7 +96,7 @@ export default function AISelfieGenerator() {
     try {
       const provider = new GoogleAuthProvider();
       await signInWithPopup(auth, provider);
-      toast({ title: "Welcome back!", description: "Let's create some art." });
+      toast({ title: "Welcome to AI Studio!", description: "Account connected successfully." });
     } catch (error: any) {
       toast({ variant: "destructive", title: "Login Failed", description: error.message });
     }
@@ -83,22 +104,83 @@ export default function AISelfieGenerator() {
 
   const handleLogout = () => auth && signOut(auth);
 
-  const onFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = Array.from(e.target.files || []);
-    const validFiles = files.filter(file => {
-      const isTypeValid = ['image/jpeg', 'image/png'].includes(file.type);
-      const isSizeValid = file.size <= 5 * 1024 * 1024;
-      return isTypeValid && isSizeValid;
-    });
+  const startCamera = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ 
+        video: { facingMode: facingMode } 
+      });
+      setCameraStream(stream);
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream;
+      }
+      setShowCamera(true);
+    } catch (err) {
+      toast({ variant: "destructive", title: "Camera Error", description: "Could not access camera." });
+    }
+  };
 
-    if (selectedFiles.length + validFiles.length > 5) {
-      toast({ variant: "destructive", title: "Limit Exceeded", description: "Max 5 images allowed." });
+  const stopCamera = () => {
+    if (cameraStream) {
+      cameraStream.getTracks().forEach(track => track.stop());
+      setCameraStream(null);
+    }
+    setShowCamera(false);
+  };
+
+  const toggleCamera = () => {
+    setFacingMode(prev => prev === 'user' ? 'environment' : 'user');
+  };
+
+  useEffect(() => {
+    if (showCamera) startCamera();
+  }, [facingMode]);
+
+  const capturePhoto = () => {
+    if (videoRef.current) {
+      const canvas = document.createElement('canvas');
+      canvas.width = videoRef.current.videoWidth;
+      canvas.height = videoRef.current.videoHeight;
+      const ctx = canvas.getContext('2d');
+      if (ctx) {
+        ctx.drawImage(videoRef.current, 0, 0);
+        canvas.toBlob((blob) => {
+          if (blob) {
+            const file = new File([blob], `camera_${Date.now()}.jpg`, { type: 'image/jpeg' });
+            addFile(file);
+            stopCamera();
+          }
+        }, 'image/jpeg', 0.9);
+      }
+    }
+  };
+
+  const addFile = (file: File) => {
+    if (selectedFiles.length >= 5) {
+      toast({ variant: "destructive", title: "Limit Reached", description: "Maximum 5 photos allowed." });
       return;
     }
+    setSelectedFiles(prev => [...prev, file]);
+    setPreviews(prev => [...prev, URL.createObjectURL(file)]);
+  };
 
-    setSelectedFiles(prev => [...prev, ...validFiles]);
-    const newPreviews = validFiles.map(file => URL.createObjectURL(file));
-    setPreviews(prev => [...prev, ...newPreviews]);
+  const onFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || []);
+    files.forEach(addFile);
+  };
+
+  const handleDrag = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (e.type === "dragenter" || e.type === "dragover") setIsDragging(true);
+    else if (e.type === "dragleave") setIsDragging(false);
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+    const files = Array.from(e.dataTransfer.files);
+    files.filter(f => f.type.startsWith('image/')).forEach(addFile);
   };
 
   const removeFile = (index: number) => {
@@ -140,18 +222,20 @@ export default function AISelfieGenerator() {
       const result = await generateAIPortrait({
         imageUrls: uploadUrls,
         userId: user.uid,
-        style: selectedStyle
+        style: selectedStyle,
+        intensity: intensity
       });
 
       addDoc(collection(db, 'users', user.uid, 'generations'), {
         url: result.imageUrl,
-        prompt: `Portrait in ${selectedStyle} style`,
+        prompt: `Portrait in ${selectedStyle} style (Intensity: ${intensity}%)`,
         style: selectedStyle,
-        referenceUrl: uploadUrls[0], // Store first image for comparison
+        intensity: intensity,
+        referenceUrl: uploadUrls[0],
         createdAt: serverTimestamp()
       });
 
-      toast({ title: "Masterpiece Ready!", description: "Your AI portrait has been added to the gallery." });
+      toast({ title: "Masterpiece Created!", description: "Your AI portrait is ready in the gallery." });
       setSelectedFiles([]);
       setPreviews([]);
     } catch (error: any) {
@@ -163,6 +247,47 @@ export default function AISelfieGenerator() {
     }
   };
 
+  const deleteGeneration = async (id: string) => {
+    if (!db || !user) return;
+    try {
+      await deleteDoc(doc(db, 'users', user.uid, 'generations', id));
+      toast({ title: "Deleted", description: "Generation removed from your history." });
+    } catch (e) {
+      toast({ variant: "destructive", title: "Error", description: "Could not delete image." });
+    }
+  };
+
+  const copyToClipboard = async (url: string) => {
+    try {
+      const response = await fetch(url);
+      const blob = await response.blob();
+      await navigator.clipboard.write([
+        new ClipboardItem({ [blob.type]: blob })
+      ]);
+      toast({ title: "Copied!", description: "Image copied to clipboard." });
+    } catch (err) {
+      // Fallback: Copy link
+      navigator.clipboard.writeText(url);
+      toast({ title: "Link Copied", description: "Direct image link copied to clipboard." });
+    }
+  };
+
+  const shareImage = async (url: string) => {
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: 'My AI Portrait',
+          text: 'Check out this AI portrait I generated!',
+          url: url
+        });
+      } catch (err) {
+        console.error(err);
+      }
+    } else {
+      copyToClipboard(url);
+    }
+  };
+
   if (authLoading) {
     return (
       <div className="min-h-screen bg-[#020617] flex items-center justify-center">
@@ -171,59 +296,100 @@ export default function AISelfieGenerator() {
     );
   }
 
+  // --- LANDING PAGE ---
   if (!user) {
     return (
-      <div className="min-h-screen bg-[#020617] flex items-center justify-center p-6 relative overflow-hidden">
-        {/* Background Glow */}
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] bg-amber-500/10 blur-[120px] rounded-full" />
-        
-        <Card className="max-w-md w-full glass-morphism border-white/5 relative z-10 p-4">
-          <CardHeader className="text-center pb-8">
-            <div className="w-20 h-20 bg-amber-500/20 rounded-[2rem] flex items-center justify-center mx-auto mb-6 shadow-2xl shadow-amber-500/20 border border-amber-500/30">
-              <Sparkles className="text-amber-500 w-10 h-10" />
-            </div>
-            <CardTitle className="text-4xl font-bold tracking-tight text-white mb-2">AI Studio</CardTitle>
-            <CardDescription className="text-slate-400 text-lg">Turn your selfie into AI art instantly.</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Button 
-              onClick={handleLogin} 
-              className="w-full h-14 text-lg font-bold rounded-2xl bg-amber-500 hover:bg-amber-600 text-white shadow-lg shadow-amber-500/20 transition-all active:scale-[0.98]"
-            >
-              Sign in with Google
-            </Button>
-            <p className="text-center text-xs text-slate-500 mt-6 px-4">
-              By joining, you agree to our Terms of Service and Privacy Policy.
+      <div className="min-h-screen bg-[#020617] text-slate-100 overflow-x-hidden">
+        {/* Nav */}
+        <nav className="container mx-auto px-6 h-20 flex items-center justify-between border-b border-white/5 relative z-20">
+          <div className="flex items-center gap-2">
+            <Zap className="text-amber-500 w-6 h-6 fill-amber-500" />
+            <span className="font-bold text-xl tracking-tight">AI Studio</span>
+          </div>
+          <Button variant="ghost" onClick={handleLogin} className="font-bold text-amber-500 hover:text-amber-400">
+            Sign In
+          </Button>
+        </nav>
+
+        {/* Hero */}
+        <section className="relative pt-20 pb-32 lg:pt-32 lg:pb-48 overflow-hidden">
+          <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[1000px] h-[600px] bg-amber-500/10 blur-[150px] rounded-full -z-10" />
+          <div className="container mx-auto px-6 text-center">
+            <Badge className="mb-6 bg-amber-500/10 text-amber-500 border-amber-500/20 py-1.5 px-4 rounded-full text-xs font-bold uppercase tracking-widest animate-in fade-in slide-in-from-top-4 duration-1000">
+              Next-Gen AI Generation
+            </Badge>
+            <h1 className="text-5xl lg:text-8xl font-black tracking-tighter mb-8 leading-[0.9] animate-in fade-in slide-in-from-bottom-8 duration-1000">
+              Turn your selfie <br/> <span className="text-amber-500">into AI art</span>
+            </h1>
+            <p className="text-slate-400 text-lg lg:text-xl max-w-2xl mx-auto mb-10 leading-relaxed animate-in fade-in slide-in-from-bottom-12 duration-1000 delay-200">
+              Upload simple selfies and watch our advanced neural networks transform you into studio-quality portraits, anime characters, or fine art paintings.
             </p>
-          </CardContent>
-        </Card>
+            <div className="flex flex-col sm:flex-row items-center justify-center gap-4 animate-in fade-in slide-in-from-bottom-16 duration-1000 delay-500">
+              <Button onClick={handleLogin} size="lg" className="h-16 px-10 text-lg font-bold bg-amber-500 hover:bg-amber-600 rounded-2xl shadow-xl shadow-amber-500/20 active:scale-[0.98] transition-all">
+                Get Started Now
+                <ArrowRight className="ml-2 w-5 h-5" />
+              </Button>
+              <Button variant="outline" className="h-16 px-10 text-lg font-bold border-white/10 rounded-2xl hover:bg-white/5">
+                View Gallery
+              </Button>
+            </div>
+          </div>
+        </section>
+
+        {/* Features */}
+        <section className="py-24 bg-white/[0.01] border-y border-white/5">
+          <div className="container mx-auto px-6">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-12">
+              <div className="space-y-4">
+                <div className="w-12 h-12 rounded-2xl bg-amber-500/10 flex items-center justify-center text-amber-500">
+                  <Smartphone className="w-6 h-6" />
+                </div>
+                <h3 className="text-xl font-bold">Mobile Friendly</h3>
+                <p className="text-slate-500">Capture and generate directly from your phone camera with built-in camera toggle support.</p>
+              </div>
+              <div className="space-y-4">
+                <div className="w-12 h-12 rounded-2xl bg-amber-500/10 flex items-center justify-center text-amber-500">
+                  <Layers className="w-6 h-6" />
+                </div>
+                <h3 className="text-xl font-bold">Multiple Styles</h3>
+                <p className="text-slate-500">Choose from Anime, Cyberpunk, Oil Painting, and more. Fine-tune with our intensity controls.</p>
+              </div>
+              <div className="space-y-4">
+                <div className="w-12 h-12 rounded-2xl bg-amber-500/10 flex items-center justify-center text-amber-500">
+                  <ShieldCheck className="w-6 h-6" />
+                </div>
+                <h3 className="text-xl font-bold">Secure & Private</h3>
+                <p className="text-slate-500">Your photos are stored securely in your private cloud gallery. We never share your data.</p>
+              </div>
+            </div>
+          </div>
+        </section>
       </div>
     );
   }
 
+  // --- APP DASHBOARD ---
   return (
     <div className="min-h-screen bg-[#020617] text-slate-100 font-body pb-24">
-      {/* Navigation Header */}
+      {/* App Header */}
       <header className="sticky top-0 z-50 w-full border-b border-white/5 bg-[#020617]/80 backdrop-blur-xl">
         <div className="container mx-auto px-6 h-20 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-amber-500 flex items-center justify-center shadow-lg shadow-amber-500/20">
-              <Zap className="text-white w-6 h-6 fill-white" />
-            </div>
+            <Zap className="text-amber-500 w-8 h-8 fill-amber-500" />
             <div className="flex flex-col">
-              <span className="font-bold text-xl tracking-tight leading-none text-white">AI Studio</span>
-              <span className="text-[10px] uppercase tracking-widest text-amber-500 font-bold mt-1">Creative Suite</span>
+              <span className="font-bold text-xl tracking-tight leading-none">AI Studio</span>
+              <span className="text-[10px] uppercase tracking-widest text-amber-500 font-bold mt-1">Creator Hub</span>
             </div>
           </div>
-          <div className="flex items-center gap-6">
-            <div className="hidden md:flex items-center gap-3 pr-6 border-r border-white/5">
+          <div className="flex items-center gap-4">
+             <div className="hidden md:flex items-center gap-3 pr-6 border-r border-white/5">
               <div className="text-right">
-                <p className="text-xs font-bold text-white leading-none mb-1">{user.displayName}</p>
-                <p className="text-[10px] text-slate-500 uppercase font-bold tracking-tighter">Premium Member</p>
+                <p className="text-xs font-bold leading-none mb-1">{user.displayName}</p>
+                <p className="text-[10px] text-slate-500 uppercase font-bold tracking-tighter">Pro Account</p>
               </div>
-              <img src={user.photoURL || ''} className="w-10 h-10 rounded-full border-2 border-amber-500/50 p-0.5" alt="User" />
+              <img src={user.photoURL || ''} className="w-10 h-10 rounded-full border-2 border-amber-500/30 p-0.5" alt="User" />
             </div>
-            <Button variant="ghost" size="sm" onClick={handleLogout} className="text-slate-400 hover:text-white hover:bg-white/5 rounded-xl font-bold">
+            <Button variant="ghost" size="sm" onClick={handleLogout} className="text-slate-400 hover:text-white rounded-xl">
               <LogOut className="w-4 h-4 mr-2" />
               Sign Out
             </Button>
@@ -231,211 +397,220 @@ export default function AISelfieGenerator() {
         </div>
       </header>
 
-      <main className="container mx-auto px-6 py-12 max-w-6xl">
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-10">
-          {/* Controls Panel */}
+      <main className="container mx-auto px-6 py-12 max-w-7xl">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-12">
+          
+          {/* Creator Panel */}
           <div className="lg:col-span-5 space-y-8">
-            <section className="space-y-6">
-              <div className="flex flex-col gap-2">
-                <h1 className="text-4xl font-bold tracking-tight text-white">Create Art</h1>
-                <p className="text-slate-400">Upload your selfies and select a style.</p>
-              </div>
+            <div className="flex flex-col gap-2">
+              <h1 className="text-4xl font-black tracking-tight">Studio Controls</h1>
+              <p className="text-slate-400">Transform your identity in seconds.</p>
+            </div>
 
-              <Card className="glass-morphism border-0 overflow-hidden rounded-[2rem]">
-                <CardContent className="p-8 space-y-8">
-                  {/* Style Selector */}
-                  <div className="space-y-4">
+            <Card className="glass-morphism border-0 overflow-hidden rounded-[2.5rem] shadow-2xl">
+              <CardContent className="p-8 space-y-8">
+                
+                {/* Style Grid */}
+                <div className="space-y-4">
+                  <label className="text-xs font-bold uppercase tracking-widest text-slate-500 flex items-center gap-2">
+                    <Layers className="w-3.5 h-3.5" />
+                    Artistic Style
+                  </label>
+                  <div className="grid grid-cols-3 gap-3">
+                    {STYLES.map((style) => (
+                      <button
+                        key={style.id}
+                        onClick={() => setSelectedStyle(style.id)}
+                        className={cn(
+                          "flex flex-col items-center justify-center p-4 rounded-2xl border transition-all gap-2 group",
+                          selectedStyle === style.id 
+                            ? "bg-amber-500 border-amber-500 text-white shadow-lg shadow-amber-500/20" 
+                            : "bg-white/5 border-white/5 text-slate-400 hover:bg-white/10 hover:border-white/10"
+                        )}
+                      >
+                        <span className="text-2xl group-hover:scale-110 transition-transform">{style.icon}</span>
+                        <span className="text-[10px] font-bold uppercase tracking-tighter">{style.label}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Intensity Slider */}
+                <div className="space-y-4">
+                  <div className="flex justify-between items-center">
+                    <label className="text-xs font-bold uppercase tracking-widest text-slate-500 flex items-center gap-2">
+                      <RefreshCw className="w-3.5 h-3.5" />
+                      Style Intensity
+                    </label>
+                    <span className="text-xs font-bold text-amber-500">{intensity}%</span>
+                  </div>
+                  <Slider 
+                    value={[intensity]} 
+                    onValueChange={(val) => setIntensity(val[0])} 
+                    max={100} 
+                    step={1} 
+                    className="py-4"
+                  />
+                </div>
+
+                {/* Multi-Upload Area */}
+                <div className="space-y-4">
+                   <div className="flex items-center justify-between">
                     <label className="text-xs font-bold uppercase tracking-widest text-slate-500 flex items-center gap-2">
                       <ImageIcon className="w-3.5 h-3.5" />
-                      Choose Your Style
+                      Reference Photos
                     </label>
-                    <div className="grid grid-cols-3 gap-3">
-                      {STYLES.map((style) => (
-                        <button
-                          key={style.id}
-                          onClick={() => setSelectedStyle(style.id as any)}
-                          className={cn(
-                            "flex flex-col items-center justify-center p-4 rounded-2xl border transition-all gap-2 group",
-                            selectedStyle === style.id 
-                              ? "bg-amber-500 border-amber-500 text-white shadow-lg shadow-amber-500/20" 
-                              : "bg-white/5 border-white/5 text-slate-400 hover:bg-white/10 hover:border-white/10"
-                          )}
-                        >
-                          <span className="text-2xl group-hover:scale-110 transition-transform">{style.icon}</span>
-                          <span className="text-xs font-bold">{style.label}</span>
-                        </button>
-                      ))}
-                    </div>
+                    <Button variant="ghost" size="sm" onClick={startCamera} className="h-8 text-amber-500 hover:text-amber-400 font-bold text-[10px] uppercase">
+                      <Camera className="w-3.5 h-3.5 mr-1.5" />
+                      Take Photo
+                    </Button>
                   </div>
 
-                  {/* Upload Area */}
-                  <div className="space-y-4">
-                    <label className="text-xs font-bold uppercase tracking-widest text-slate-500 flex items-center justify-between">
-                      <span className="flex items-center gap-2">
-                        <Upload className="w-3.5 h-3.5" />
-                        Reference Photos
-                      </span>
-                      <span className={cn(selectedFiles.length >= 3 ? "text-green-500" : "text-slate-500")}>
-                        {selectedFiles.length}/5
-                      </span>
-                    </label>
-                    <div 
-                      className={cn(
-                        "relative border-2 border-dashed rounded-[2rem] p-10 transition-all flex flex-col items-center justify-center gap-4 bg-white/[0.02]",
-                        selectedFiles.length > 0 ? "border-amber-500/40" : "border-white/5 hover:border-amber-500/40"
-                      )}
-                    >
-                      <input 
-                        type="file" 
-                        multiple 
-                        accept="image/jpeg,image/png" 
-                        onChange={onFileSelect} 
-                        className="absolute inset-0 opacity-0 cursor-pointer z-20" 
-                        disabled={isGenerating}
-                      />
-                      
-                      {previews.length === 0 ? (
-                        <div className="text-center space-y-3">
-                          <div className="w-16 h-16 rounded-full bg-amber-500/10 flex items-center justify-center mx-auto text-amber-500">
-                            <Plus className="w-8 h-8" />
-                          </div>
-                          <div>
-                            <p className="font-bold text-slate-200">Upload Selfies</p>
-                            <p className="text-xs text-slate-500">Drop images here or click to browse</p>
-                          </div>
-                        </div>
-                      ) : (
-                        <div className="grid grid-cols-3 gap-3 w-full relative z-30">
-                          {previews.map((src, i) => (
-                            <div key={i} className="relative group aspect-square rounded-2xl overflow-hidden border border-white/5">
-                              <img src={src} className="w-full h-full object-cover" alt="Preview" />
-                              <button 
-                                onClick={(e) => { e.stopPropagation(); removeFile(i); }}
-                                className="absolute top-1.5 right-1.5 bg-red-500/90 p-2 rounded-xl opacity-0 group-hover:opacity-100 transition-all hover:scale-110"
-                              >
-                                <Trash2 className="w-3.5 h-3.5 text-white" />
-                              </button>
-                            </div>
-                          ))}
-                          {previews.length < 5 && (
-                            <div className="aspect-square rounded-2xl border-2 border-dashed border-white/5 flex items-center justify-center hover:border-amber-500/40 transition-colors bg-white/[0.01]">
-                              <Plus className="w-6 h-6 text-slate-600" />
-                            </div>
-                          )}
-                        </div>
-                      )}
-                    </div>
-                  </div>
+                  <div 
+                    onDragEnter={handleDrag}
+                    onDragOver={handleDrag}
+                    onDragLeave={handleDrag}
+                    onDrop={handleDrop}
+                    className={cn(
+                      "relative border-2 border-dashed rounded-[2rem] p-8 transition-all flex flex-col items-center justify-center gap-4 bg-white/[0.01]",
+                      isDragging ? "border-amber-500 bg-amber-500/5" : "border-white/5 hover:border-amber-500/40"
+                    )}
+                  >
+                    <input 
+                      type="file" 
+                      multiple 
+                      accept="image/*" 
+                      onChange={onFileSelect} 
+                      className="absolute inset-0 opacity-0 cursor-pointer z-20" 
+                      disabled={isGenerating}
+                    />
 
-                  {/* Progress & Action */}
-                  <div className="space-y-6">
-                    {isGenerating && (
-                      <div className="space-y-3 p-6 bg-amber-500/5 rounded-[2rem] border border-amber-500/10 animate-in fade-in slide-in-from-bottom-2">
-                        <div className="flex justify-between items-center text-xs font-bold uppercase tracking-widest text-amber-500">
-                          <span className="flex items-center gap-2">
-                            {isUploading ? <Upload className="w-3.5 h-3.5 animate-bounce" /> : <Sparkles className="w-3.5 h-3.5 animate-pulse" />}
-                            {isUploading ? `Uploading...` : `Generating ${selectedStyle}...`}
-                          </span>
-                          <span>{isUploading ? `${uploadProgress}%` : "Magic time"}</span>
+                    {previews.length === 0 ? (
+                      <div className="text-center space-y-2 py-4">
+                        <div className="w-14 h-14 rounded-full bg-amber-500/10 flex items-center justify-center mx-auto text-amber-500 mb-2">
+                          <Upload className="w-6 h-6" />
                         </div>
-                        <Progress value={isUploading ? uploadProgress : 100} className="h-1.5 bg-white/5" />
+                        <p className="font-bold text-sm">Drop your selfies here</p>
+                        <p className="text-xs text-slate-500">PNG, JPG up to 5MB each</p>
+                      </div>
+                    ) : (
+                      <div className="grid grid-cols-3 gap-2 w-full relative z-30">
+                        {previews.map((src, i) => (
+                          <div key={i} className="relative group aspect-square rounded-xl overflow-hidden border border-white/10">
+                            <img src={src} className="w-full h-full object-cover" alt="Preview" />
+                            <button 
+                              onClick={(e) => { e.stopPropagation(); removeFile(i); }}
+                              className="absolute top-1 right-1 bg-red-500/90 p-1.5 rounded-lg opacity-0 group-hover:opacity-100 transition-all"
+                            >
+                              <X className="w-3 h-3 text-white" />
+                            </button>
+                          </div>
+                        ))}
+                        {previews.length < 5 && (
+                           <div className="aspect-square rounded-xl border-2 border-dashed border-white/5 flex items-center justify-center hover:border-amber-500/40 bg-white/[0.01]">
+                            <Plus className="w-5 h-5 text-slate-700" />
+                          </div>
+                        )}
                       </div>
                     )}
-
-                    <Button 
-                      onClick={handleGenerate} 
-                      disabled={selectedFiles.length < 3 || isGenerating} 
-                      className="w-full h-16 text-lg font-bold rounded-[2rem] bg-amber-500 hover:bg-amber-600 text-white shadow-xl shadow-amber-500/20 disabled:opacity-50 disabled:grayscale transition-all"
-                    >
-                      {isGenerating ? (
-                        <>
-                          <Loader2 className="mr-3 h-6 w-6 animate-spin" />
-                          Processing...
-                        </>
-                      ) : (
-                        <>
-                          <Sparkles className="mr-3 h-6 w-6" />
-                          Generate My Portrait
-                        </>
-                      )}
-                    </Button>
-                    {selectedFiles.length < 3 && (
-                      <p className="text-center text-[10px] text-slate-600 font-bold uppercase tracking-widest flex items-center justify-center gap-2">
-                        <Info className="w-3 h-3" />
-                        Minimum 3 photos required
-                      </p>
-                    )}
                   </div>
-                </CardContent>
-              </Card>
-            </section>
+                </div>
+
+                {/* Progress & Action */}
+                <div className="space-y-6 pt-4">
+                  {(isGenerating || isUploading) && (
+                    <div className="space-y-3 p-6 bg-amber-500/5 rounded-[2rem] border border-amber-500/10 animate-in fade-in zoom-in-95">
+                      <div className="flex justify-between items-center text-[10px] font-bold uppercase tracking-widest text-amber-500">
+                        <span className="flex items-center gap-2">
+                          <Loader2 className="w-3 h-3 animate-spin" />
+                          {isUploading ? 'Preparing Assets' : 'Generating Art'}
+                        </span>
+                        <span>{isUploading ? `${uploadProgress}%` : "50%"}</span>
+                      </div>
+                      <Progress value={isUploading ? uploadProgress : 50} className="h-1.5" />
+                    </div>
+                  )}
+
+                  <Button 
+                    onClick={handleGenerate} 
+                    disabled={selectedFiles.length === 0 || isGenerating} 
+                    className="w-full h-16 text-lg font-bold rounded-[2rem] bg-amber-500 hover:bg-amber-600 text-white shadow-xl shadow-amber-500/30 transition-all active:scale-[0.98]"
+                  >
+                    {isGenerating ? (
+                      <><Loader2 className="mr-2 h-5 w-5 animate-spin" /> Cooking...</>
+                    ) : (
+                      <><Sparkles className="mr-2 h-5 w-5" /> Generate Portrait</>
+                    )}
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
           </div>
 
-          {/* Gallery Panel */}
+          {/* Gallery View */}
           <div className="lg:col-span-7 space-y-10">
             <div className="flex items-center justify-between">
               <div className="flex flex-col gap-1">
-                <h2 className="text-3xl font-bold tracking-tight text-white flex items-center gap-3">
-                  <CheckCircle2 className="w-8 h-8 text-amber-500" />
-                  Your Gallery
+                <h2 className="text-3xl font-black tracking-tight flex items-center gap-3">
+                  <Layers className="text-amber-500 w-8 h-8" />
+                  Your Creations
                 </h2>
-                <p className="text-slate-400">View and download your AI masterpieces.</p>
+                <p className="text-slate-500">Your personal cloud of AI masterpieces.</p>
               </div>
-              {generations && generations.length > 0 && (
-                <Badge variant="secondary" className="bg-white/5 text-amber-500 border-0 px-4 py-1.5 rounded-xl font-bold">
-                  {generations.length} Creations
-                </Badge>
-              )}
             </div>
 
             {generations && generations.length > 0 ? (
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-8">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                 {generations.map((gen: any) => (
-                  <Card key={gen.id} className="group overflow-hidden glass-morphism border-0 rounded-[2.5rem] transition-all hover:scale-[1.02]">
-                    <div className="relative aspect-[3/4] overflow-hidden">
-                      <img src={gen.url} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" alt="Generated" />
+                  <Card key={gen.id} className="group relative overflow-hidden glass-morphism border-0 rounded-[2.5rem] transition-all hover:scale-[1.01] hover:shadow-2xl">
+                    <div className="relative aspect-[4/5] overflow-hidden">
+                      <img src={gen.url} className="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-105" alt="AI Generated" />
                       
-                      {/* Compare Hint - Shows reference if stored */}
-                      {gen.referenceUrl && (
-                        <div className="absolute top-4 left-4 z-20">
-                           <Badge className="bg-black/60 backdrop-blur-md border-0 text-[10px] uppercase font-bold tracking-widest p-2">
-                             Before/After Mode
-                           </Badge>
+                      {/* Hover Overlay */}
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-all duration-300">
+                        <div className="absolute top-4 left-4">
+                          <Badge className="bg-amber-500 text-white border-0 font-bold uppercase text-[10px] py-1 px-3">
+                            {gen.style} ({gen.intensity}%)
+                          </Badge>
                         </div>
-                      )}
-
-                      {/* Reference Hover Overlay (Optional UX) */}
-                      {gen.referenceUrl && (
-                        <div className="absolute inset-0 z-10 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-                          <div className="absolute top-4 right-4 w-20 h-20 rounded-2xl overflow-hidden border-2 border-white/20 shadow-2xl">
-                            <img src={gen.referenceUrl} className="w-full h-full object-cover" alt="Source" />
-                          </div>
-                        </div>
-                      )}
-
-                      {/* Actions Overlay */}
-                      <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black via-black/40 to-transparent p-8 pt-20 translate-y-4 group-hover:translate-y-0 opacity-0 group-hover:opacity-100 transition-all duration-300">
-                        <div className="flex flex-col gap-4">
-                          <div className="flex items-center justify-between">
-                            <Badge className="bg-amber-500 text-white border-0 font-bold uppercase text-[10px] tracking-widest">
-                              {gen.style || 'AI Result'}
-                            </Badge>
-                            <span className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">
-                              {new Date(gen.createdAt?.seconds * 1000).toLocaleDateString()}
-                            </span>
-                          </div>
-                          <Button 
-                            className="w-full h-12 font-bold rounded-2xl bg-white text-black hover:bg-slate-200 transition-colors"
-                            onClick={() => {
-                              const link = document.createElement('a');
-                              link.href = gen.url;
-                              link.download = `ai_portrait_${gen.id}.png`;
-                              link.click();
-                            }}
-                          >
-                            <Download className="w-4 h-4 mr-2" />
-                            Download High-Res
+                        
+                        <div className="absolute top-4 right-4 flex gap-2">
+                           <Button variant="secondary" size="icon" onClick={() => copyToClipboard(gen.url)} className="h-9 w-9 bg-black/40 backdrop-blur-md text-white rounded-xl">
+                            <Copy className="w-4 h-4" />
                           </Button>
+                          <Button variant="destructive" size="icon" onClick={() => deleteGeneration(gen.id)} className="h-9 w-9 rounded-xl">
+                            <Trash2 className="w-4 h-4" />
+                          </Button>
+                        </div>
+
+                        <div className="absolute inset-x-0 bottom-0 p-8 space-y-4">
+                           {gen.referenceUrl && (
+                            <div className="flex items-center gap-3 mb-4 p-2 bg-white/5 backdrop-blur-md rounded-2xl w-fit">
+                               <img src={gen.referenceUrl} className="w-10 h-10 rounded-lg object-cover border border-white/20" alt="Source" />
+                               <div className="text-[10px] font-bold uppercase tracking-widest text-slate-300">Original Reference</div>
+                            </div>
+                          )}
+                          <div className="flex gap-2">
+                            <Button 
+                              className="flex-1 h-12 bg-white text-black font-bold rounded-2xl hover:bg-slate-200"
+                              onClick={() => {
+                                const a = document.createElement('a');
+                                a.href = gen.url;
+                                a.download = `ai_portrait_${gen.id}.png`;
+                                a.click();
+                              }}
+                            >
+                              <Download className="w-4 h-4 mr-2" />
+                              Save
+                            </Button>
+                            <Button 
+                              variant="outline" 
+                              className="h-12 w-12 border-white/10 rounded-2xl bg-white/10 backdrop-blur-md"
+                              onClick={() => shareImage(gen.url)}
+                            >
+                              <Share2 className="w-4 h-4" />
+                            </Button>
+                          </div>
                         </div>
                       </div>
                     </div>
@@ -443,11 +618,11 @@ export default function AISelfieGenerator() {
                 ))}
               </div>
             ) : (
-              <div className="text-center py-32 glass-morphism rounded-[3rem] border-0">
-                <div className="w-20 h-20 bg-white/5 rounded-full flex items-center justify-center mx-auto mb-6 text-slate-700">
-                  <ImageIcon className="w-10 h-10" />
+              <div className="text-center py-40 glass-morphism rounded-[3rem] border-0">
+                <div className="w-20 h-20 bg-white/5 rounded-full flex items-center justify-center mx-auto mb-6 text-slate-800">
+                  <Sparkles className="w-10 h-10" />
                 </div>
-                <h3 className="text-2xl font-bold text-white mb-2">No art yet</h3>
+                <h3 className="text-2xl font-bold mb-2">No art yet</h3>
                 <p className="text-slate-500 max-w-xs mx-auto text-sm">Upload your selfies to start building your professional AI gallery.</p>
               </div>
             )}
@@ -455,16 +630,32 @@ export default function AISelfieGenerator() {
         </div>
       </main>
 
-      {/* Mobile Sticky CTA */}
-      <div className="fixed bottom-0 inset-x-0 p-4 lg:hidden z-50 bg-gradient-to-t from-[#020617] via-[#020617] to-transparent">
-        <Button 
-          onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
-          className="w-full h-14 rounded-2xl bg-amber-500 text-white font-bold shadow-2xl shadow-amber-500/40"
-        >
-          Start New Generation
-          <ChevronRight className="w-4 h-4 ml-2" />
-        </Button>
-      </div>
+      {/* Camera Modal */}
+      {showCamera && (
+        <div className="fixed inset-0 z-[100] bg-black flex flex-col items-center justify-center p-6">
+          <Button variant="ghost" size="icon" onClick={stopCamera} className="absolute top-6 right-6 text-white hover:bg-white/10 h-12 w-12 rounded-full">
+            <X className="w-8 h-8" />
+          </Button>
+          
+          <div className="relative w-full max-w-md aspect-[3/4] rounded-[2rem] overflow-hidden bg-slate-900 border border-white/10">
+            <video ref={videoRef} className="w-full h-full object-cover" autoPlay playsInline muted />
+            
+            <div className="absolute bottom-8 inset-x-0 flex items-center justify-center gap-8">
+              <Button onClick={toggleCamera} variant="secondary" size="icon" className="h-14 w-14 rounded-full bg-white/10 backdrop-blur-md text-white">
+                <FlipHorizontal className="w-6 h-6" />
+              </Button>
+              <button 
+                onClick={capturePhoto}
+                className="w-20 h-20 rounded-full border-4 border-white flex items-center justify-center active:scale-95 transition-all"
+              >
+                <div className="w-16 h-16 rounded-full bg-white" />
+              </button>
+              <div className="w-14 h-14" /> {/* Spacer */}
+            </div>
+          </div>
+          <p className="mt-8 text-slate-400 font-bold uppercase tracking-widest text-xs">Align your face in the center</p>
+        </div>
+      )}
     </div>
   );
 }
