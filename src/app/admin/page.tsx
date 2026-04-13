@@ -98,7 +98,7 @@ export default function AdminDashboard() {
               <Zap className="text-white w-6 h-6 fill-white" />
             </div>
             <span className="text-xl font-bold tracking-tight bg-gradient-to-r from-white to-slate-400 bg-clip-text text-transparent">
-              Studio Admin
+              mimicme Admin
             </span>
           </div>
 
@@ -212,7 +212,7 @@ export default function AdminDashboard() {
             <Card className="xl:col-span-2 glass-morphism border-0 overflow-hidden">
               <CardHeader className="p-8 pb-4">
                 <CardTitle>Recent Activity</CardTitle>
-                <CardDescription>Live feed of AI generations across the platform.</CardDescription>
+                <CardDescription>Live feed of mimicme generations across the platform.</CardDescription>
               </CardHeader>
               <CardContent className="p-0">
                 <div className="overflow-x-auto">
@@ -302,7 +302,7 @@ export default function AdminDashboard() {
                     <LayoutDashboard className="w-10 h-10 opacity-30" />
                     <Badge className="bg-black/20 border-0 text-white font-bold">Premium Plan</Badge>
                   </div>
-                  <h4 className="text-xl font-bold mb-2">System Resources</h4>
+                  <h4 className="text-xl font-bold mb-2">mimicme Resources</h4>
                   <p className="text-white/70 text-sm mb-6">Your instance is scaling automatically based on traffic.</p>
                   <div className="space-y-4">
                     <div className="flex justify-between text-xs font-bold uppercase tracking-wider">

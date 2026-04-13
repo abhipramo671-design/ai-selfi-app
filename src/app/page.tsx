@@ -96,7 +96,7 @@ export default function AISelfieGenerator() {
     try {
       const provider = new GoogleAuthProvider();
       await signInWithPopup(auth, provider);
-      toast({ title: "Welcome to AI Studio!", description: "Account connected successfully." });
+      toast({ title: "Welcome to mimicme!", description: "Account connected successfully." });
     } catch (error: any) {
       toast({ variant: "destructive", title: "Login Failed", description: error.message });
     }
@@ -235,7 +235,7 @@ export default function AISelfieGenerator() {
         createdAt: serverTimestamp()
       });
 
-      toast({ title: "Masterpiece Created!", description: "Your AI portrait is ready in the gallery." });
+      toast({ title: "Masterpiece Created!", description: "Your mimicme portrait is ready in the gallery." });
       setSelectedFiles([]);
       setPreviews([]);
     } catch (error: any) {
@@ -266,7 +266,6 @@ export default function AISelfieGenerator() {
       ]);
       toast({ title: "Copied!", description: "Image copied to clipboard." });
     } catch (err) {
-      // Fallback: Copy link
       navigator.clipboard.writeText(url);
       toast({ title: "Link Copied", description: "Direct image link copied to clipboard." });
     }
@@ -276,8 +275,8 @@ export default function AISelfieGenerator() {
     if (navigator.share) {
       try {
         await navigator.share({
-          title: 'My AI Portrait',
-          text: 'Check out this AI portrait I generated!',
+          title: 'My mimicme Portrait',
+          text: 'Check out this AI portrait I generated with mimicme!',
           url: url
         });
       } catch (err) {
@@ -296,27 +295,24 @@ export default function AISelfieGenerator() {
     );
   }
 
-  // --- LANDING PAGE ---
   if (!user) {
     return (
       <div className="min-h-screen bg-[#020617] text-slate-100 overflow-x-hidden">
-        {/* Nav */}
         <nav className="container mx-auto px-6 h-20 flex items-center justify-between border-b border-white/5 relative z-20">
           <div className="flex items-center gap-2">
             <Zap className="text-amber-500 w-6 h-6 fill-amber-500" />
-            <span className="font-bold text-xl tracking-tight">AI Studio</span>
+            <span className="font-bold text-xl tracking-tight">mimicme</span>
           </div>
           <Button variant="ghost" onClick={handleLogin} className="font-bold text-amber-500 hover:text-amber-400">
             Sign In
           </Button>
         </nav>
 
-        {/* Hero */}
         <section className="relative pt-20 pb-32 lg:pt-32 lg:pb-48 overflow-hidden">
           <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[1000px] h-[600px] bg-amber-500/10 blur-[150px] rounded-full -z-10" />
           <div className="container mx-auto px-6 text-center">
             <Badge className="mb-6 bg-amber-500/10 text-amber-500 border-amber-500/20 py-1.5 px-4 rounded-full text-xs font-bold uppercase tracking-widest animate-in fade-in slide-in-from-top-4 duration-1000">
-              Next-Gen AI Generation
+              mimicme ai camera
             </Badge>
             <h1 className="text-5xl lg:text-8xl font-black tracking-tighter mb-8 leading-[0.9] animate-in fade-in slide-in-from-bottom-8 duration-1000">
               Turn your selfie <br/> <span className="text-amber-500">into AI art</span>
@@ -336,7 +332,6 @@ export default function AISelfieGenerator() {
           </div>
         </section>
 
-        {/* Features */}
         <section className="py-24 bg-white/[0.01] border-y border-white/5">
           <div className="container mx-auto px-6">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-12">
@@ -368,17 +363,15 @@ export default function AISelfieGenerator() {
     );
   }
 
-  // --- APP DASHBOARD ---
   return (
     <div className="min-h-screen bg-[#020617] text-slate-100 font-body pb-24">
-      {/* App Header */}
       <header className="sticky top-0 z-50 w-full border-b border-white/5 bg-[#020617]/80 backdrop-blur-xl">
         <div className="container mx-auto px-6 h-20 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <Zap className="text-amber-500 w-8 h-8 fill-amber-500" />
             <div className="flex flex-col">
-              <span className="font-bold text-xl tracking-tight leading-none">AI Studio</span>
-              <span className="text-[10px] uppercase tracking-widest text-amber-500 font-bold mt-1">Creator Hub</span>
+              <span className="font-bold text-xl tracking-tight leading-none">mimicme</span>
+              <span className="text-[10px] uppercase tracking-widest text-amber-500 font-bold mt-1">ai camera</span>
             </div>
           </div>
           <div className="flex items-center gap-4">
@@ -399,18 +392,14 @@ export default function AISelfieGenerator() {
 
       <main className="container mx-auto px-6 py-12 max-w-7xl">
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-12">
-          
-          {/* Creator Panel */}
           <div className="lg:col-span-5 space-y-8">
             <div className="flex flex-col gap-2">
-              <h1 className="text-4xl font-black tracking-tight">Studio Controls</h1>
-              <p className="text-slate-400">Transform your identity in seconds.</p>
+              <h1 className="text-4xl font-black tracking-tight">Camera Controls</h1>
+              <p className="text-slate-400">Transform your identity in seconds with mimicme.</p>
             </div>
 
             <Card className="glass-morphism border-0 overflow-hidden rounded-[2.5rem] shadow-2xl">
               <CardContent className="p-8 space-y-8">
-                
-                {/* Style Grid */}
                 <div className="space-y-4">
                   <label className="text-xs font-bold uppercase tracking-widest text-slate-500 flex items-center gap-2">
                     <Layers className="w-3.5 h-3.5" />
@@ -435,7 +424,6 @@ export default function AISelfieGenerator() {
                   </div>
                 </div>
 
-                {/* Intensity Slider */}
                 <div className="space-y-4">
                   <div className="flex justify-between items-center">
                     <label className="text-xs font-bold uppercase tracking-widest text-slate-500 flex items-center gap-2">
@@ -453,7 +441,6 @@ export default function AISelfieGenerator() {
                   />
                 </div>
 
-                {/* Multi-Upload Area */}
                 <div className="space-y-4">
                    <div className="flex items-center justify-between">
                     <label className="text-xs font-bold uppercase tracking-widest text-slate-500 flex items-center gap-2">
@@ -462,7 +449,7 @@ export default function AISelfieGenerator() {
                     </label>
                     <Button variant="ghost" size="sm" onClick={startCamera} className="h-8 text-amber-500 hover:text-amber-400 font-bold text-[10px] uppercase">
                       <Camera className="w-3.5 h-3.5 mr-1.5" />
-                      Take Photo
+                      Launch mimicme
                     </Button>
                   </div>
 
@@ -516,14 +503,13 @@ export default function AISelfieGenerator() {
                   </div>
                 </div>
 
-                {/* Progress & Action */}
                 <div className="space-y-6 pt-4">
                   {(isGenerating || isUploading) && (
                     <div className="space-y-3 p-6 bg-amber-500/5 rounded-[2rem] border border-amber-500/10 animate-in fade-in zoom-in-95">
                       <div className="flex justify-between items-center text-[10px] font-bold uppercase tracking-widest text-amber-500">
                         <span className="flex items-center gap-2">
                           <Loader2 className="w-3 h-3 animate-spin" />
-                          {isUploading ? 'Preparing Assets' : 'Generating Art'}
+                          {isUploading ? 'Preparing Assets' : 'mimicme generating'}
                         </span>
                         <span>{isUploading ? `${uploadProgress}%` : "50%"}</span>
                       </div>
@@ -539,7 +525,7 @@ export default function AISelfieGenerator() {
                     {isGenerating ? (
                       <><Loader2 className="mr-2 h-5 w-5 animate-spin" /> Cooking...</>
                     ) : (
-                      <><Sparkles className="mr-2 h-5 w-5" /> Generate Portrait</>
+                      <><Sparkles className="mr-2 h-5 w-5" /> Generate with mimicme</>
                     )}
                   </Button>
                 </div>
@@ -547,13 +533,12 @@ export default function AISelfieGenerator() {
             </Card>
           </div>
 
-          {/* Gallery View */}
           <div className="lg:col-span-7 space-y-10">
             <div className="flex items-center justify-between">
               <div className="flex flex-col gap-1">
                 <h2 className="text-3xl font-black tracking-tight flex items-center gap-3">
                   <Layers className="text-amber-500 w-8 h-8" />
-                  Your Creations
+                  Your mimicme Gallery
                 </h2>
                 <p className="text-slate-500">Your personal cloud of AI masterpieces.</p>
               </div>
@@ -566,7 +551,6 @@ export default function AISelfieGenerator() {
                     <div className="relative aspect-[4/5] overflow-hidden">
                       <img src={gen.url} className="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-105" alt="AI Generated" />
                       
-                      {/* Hover Overlay */}
                       <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-all duration-300">
                         <div className="absolute top-4 left-4">
                           <Badge className="bg-amber-500 text-white border-0 font-bold uppercase text-[10px] py-1 px-3">
@@ -596,7 +580,7 @@ export default function AISelfieGenerator() {
                               onClick={() => {
                                 const a = document.createElement('a');
                                 a.href = gen.url;
-                                a.download = `ai_portrait_${gen.id}.png`;
+                                a.download = `mimicme_portrait_${gen.id}.png`;
                                 a.click();
                               }}
                             >
@@ -623,14 +607,13 @@ export default function AISelfieGenerator() {
                   <Sparkles className="w-10 h-10" />
                 </div>
                 <h3 className="text-2xl font-bold mb-2">No art yet</h3>
-                <p className="text-slate-500 max-w-xs mx-auto text-sm">Upload your selfies to start building your professional AI gallery.</p>
+                <p className="text-slate-500 max-w-xs mx-auto text-sm">Upload your selfies to start building your mimicme gallery.</p>
               </div>
             )}
           </div>
         </div>
       </main>
 
-      {/* Camera Modal */}
       {showCamera && (
         <div className="fixed inset-0 z-[100] bg-black flex flex-col items-center justify-center p-6">
           <Button variant="ghost" size="icon" onClick={stopCamera} className="absolute top-6 right-6 text-white hover:bg-white/10 h-12 w-12 rounded-full">
@@ -650,10 +633,10 @@ export default function AISelfieGenerator() {
               >
                 <div className="w-16 h-16 rounded-full bg-white" />
               </button>
-              <div className="w-14 h-14" /> {/* Spacer */}
+              <div className="w-14 h-14" />
             </div>
           </div>
-          <p className="mt-8 text-slate-400 font-bold uppercase tracking-widest text-xs">Align your face in the center</p>
+          <p className="mt-8 text-slate-400 font-bold uppercase tracking-widest text-xs">Align your face in the mimicme frame</p>
         </div>
       )}
     </div>

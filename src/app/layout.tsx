@@ -1,11 +1,10 @@
-
 import type {Metadata, Viewport} from 'next';
 import './globals.css';
 import { Toaster } from "@/components/ui/toaster"
 import { FirebaseClientProvider } from "@/firebase/client-provider";
 
 export const metadata: Metadata = {
-  title: 'AI Selfie Studio',
+  title: 'mimicme ai camera',
   description: 'Generate professional portraits from your selfies with AI.',
 };
 

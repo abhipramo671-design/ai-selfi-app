@@ -1,4 +1,4 @@
-# AI Selfie Studio
+# mimicme ai camera
 
 Generate professional portraits from your selfies with AI using Next.js, Firebase, and Genkit.
 
