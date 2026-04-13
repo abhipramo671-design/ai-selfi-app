@@ -1,7 +1,7 @@
 
 "use client";
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect } from 'react';
 import { 
   Zap,
   ArrowRight,
@@ -9,14 +9,10 @@ import {
   Layers,
   ShieldCheck,
   Loader2,
-  AlertCircle,
-  Copy,
-  Check,
   Camera
 } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { toast } from "@/hooks/use-toast";
 import { useUser, useAuth } from '@/firebase';
 import { 
@@ -30,14 +26,8 @@ export default function LandingPage() {
   const { user, loading: authLoading } = useUser();
   const auth = useAuth();
   const router = useRouter();
-  const [currentDomain, setCurrentDomain] = useState("");
-  const [copied, setCopied] = useState(false);
 
   useEffect(() => {
-    if (typeof window !== "undefined") {
-      setCurrentDomain(window.location.hostname);
-    }
-
     if (auth) {
       getRedirectResult(auth)
         .then((result) => {
@@ -51,7 +41,7 @@ export default function LandingPage() {
             toast({
               variant: "destructive",
               title: "Unauthorized Domain",
-              description: `Please add ${window.location.hostname} to your Firebase Authorized Domains.`,
+              description: `Please add this domain to your Firebase Authorized Domains in the console.`,
             });
           } else {
             toast({ 
@@ -78,15 +68,6 @@ export default function LandingPage() {
       await signInWithRedirect(auth, provider);
     } catch (error: any) {
       toast({ variant: "destructive", title: "Login Failed", description: error.message });
-    }
-  };
-
-  const copyDomain = () => {
-    if (typeof window !== "undefined") {
-      navigator.clipboard.writeText(currentDomain);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-      toast({ title: "Copied!", description: "Domain copied to clipboard." });
     }
   };
 
@@ -125,22 +106,6 @@ export default function LandingPage() {
           <p className="text-slate-400 text-lg lg:text-xl max-w-2xl mx-auto mb-10 leading-relaxed animate-in fade-in slide-in-from-bottom-12 duration-1000 delay-200">
             Upload simple selfies and watch our advanced neural networks transform you into studio-quality portraits, anime characters, or fine art paintings.
           </p>
-          
-          <div className="max-w-2xl mx-auto mb-10 animate-in fade-in zoom-in duration-700 delay-300">
-            <Alert className="bg-amber-500/5 border-amber-500/20 text-left">
-              <AlertCircle className="h-5 w-5 text-amber-500" />
-              <AlertTitle className="text-amber-500 font-bold">Fixing 403 Access Error</AlertTitle>
-              <AlertDescription className="text-slate-400 text-sm mt-2">
-                If you see a 403 error during login, you must add the domain below to your Firebase Console {`>`} Auth {`>`} Settings {`>`} Authorized Domains.
-                <div className="mt-4 flex items-center gap-2 bg-black/40 p-3 rounded-lg border border-white/5">
-                  <code className="text-amber-500 flex-1 font-mono text-xs truncate">{currentDomain}</code>
-                  <Button variant="ghost" size="sm" onClick={copyDomain} className="h-8 w-8 p-0 text-slate-400 hover:text-amber-500">
-                    {copied ? <Check className="w-4 h-4 text-green-500" /> : <Copy className="w-4 h-4" />}
-                  </Button>
-                </div>
-              </AlertDescription>
-            </Alert>
-          </div>
 
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4 animate-in fade-in slide-in-from-bottom-16 duration-1000 delay-500">
             <Button onClick={handleLogin} size="lg" className="h-16 px-10 text-lg font-bold bg-amber-500 hover:bg-amber-600 rounded-2xl shadow-xl shadow-amber-500/20 active:scale-[0.98] transition-all">
