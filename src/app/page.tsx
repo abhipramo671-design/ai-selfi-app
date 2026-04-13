@@ -11,7 +11,8 @@ import {
   Loader2,
   AlertCircle,
   Copy,
-  Check
+  Check,
+  Camera
 } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -32,7 +33,6 @@ export default function LandingPage() {
   const [currentDomain, setCurrentDomain] = useState("");
   const [copied, setCopied] = useState(false);
 
-  // Handle redirect result and diagnostic domain
   useEffect(() => {
     if (typeof window !== "undefined") {
       setCurrentDomain(window.location.hostname);
@@ -42,7 +42,6 @@ export default function LandingPage() {
       getRedirectResult(auth)
         .then((result) => {
           if (result) {
-            console.log("Successfully signed in via redirect");
             router.push('/dashboard');
           }
         })
@@ -75,7 +74,6 @@ export default function LandingPage() {
     if (!auth) return;
     try {
       const provider = new GoogleAuthProvider();
-      // Force account selection to help with multiple accounts
       provider.setCustomParameters({ prompt: 'select_account' });
       await signInWithRedirect(auth, provider);
     } catch (error: any) {
@@ -84,10 +82,12 @@ export default function LandingPage() {
   };
 
   const copyDomain = () => {
-    navigator.clipboard.writeText(currentDomain);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-    toast({ title: "Copied!", description: "Domain copied to clipboard." });
+    if (typeof window !== "undefined") {
+      navigator.clipboard.writeText(currentDomain);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+      toast({ title: "Copied!", description: "Domain copied to clipboard." });
+    }
   };
 
   if (authLoading || user) {
@@ -126,13 +126,12 @@ export default function LandingPage() {
             Upload simple selfies and watch our advanced neural networks transform you into studio-quality portraits, anime characters, or fine art paintings.
           </p>
           
-          {/* Diagnostic Alert for 403 Errors */}
           <div className="max-w-2xl mx-auto mb-10 animate-in fade-in zoom-in duration-700 delay-300">
             <Alert className="bg-amber-500/5 border-amber-500/20 text-left">
               <AlertCircle className="h-5 w-5 text-amber-500" />
               <AlertTitle className="text-amber-500 font-bold">Fixing 403 Access Error</AlertTitle>
               <AlertDescription className="text-slate-400 text-sm mt-2">
-                If you see a 403 error during login, you must add the domain below to your Firebase Console &gt; Auth &gt; Settings &gt; Authorized Domains.
+                If you see a 403 error during login, you must add the domain below to your Firebase Console {`>`} Auth {`>`} Settings {`>`} Authorized Domains.
                 <div className="mt-4 flex items-center gap-2 bg-black/40 p-3 rounded-lg border border-white/5">
                   <code className="text-amber-500 flex-1 font-mono text-xs truncate">{currentDomain}</code>
                   <Button variant="ghost" size="sm" onClick={copyDomain} className="h-8 w-8 p-0 text-slate-400 hover:text-amber-500">
@@ -148,8 +147,9 @@ export default function LandingPage() {
               Get Started Now
               <ArrowRight className="ml-2 w-5 h-5" />
             </Button>
-            <Button variant="outline" className="h-16 px-10 text-lg font-bold border-white/10 rounded-2xl hover:bg-white/5">
-              View Showcase
+            <Button variant="outline" onClick={() => router.push('/dashboard')} className="h-16 px-10 text-lg font-bold border-white/10 rounded-2xl hover:bg-white/5">
+              <Camera className="mr-2 w-5 h-5" />
+              Try Guest Mode
             </Button>
           </div>
         </div>

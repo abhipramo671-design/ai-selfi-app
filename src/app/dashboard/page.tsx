@@ -18,7 +18,8 @@ import {
   Layers,
   RefreshCw,
   X,
-  FlipHorizontal
+  FlipHorizontal,
+  User
 } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -74,12 +75,6 @@ export default function Dashboard() {
   const [cameraStream, setCameraStream] = useState<MediaStream | null>(null);
   const [facingMode, setFacingMode] = useState<'user' | 'environment'>('user');
   const videoRef = useRef<HTMLVideoElement>(null);
-
-  useEffect(() => {
-    if (!authLoading && !user) {
-      router.push('/');
-    }
-  }, [user, authLoading, router]);
 
   const generationsQuery = useMemo(() => {
     if (!db || !user) return null;
@@ -179,7 +174,11 @@ export default function Dashboard() {
   };
 
   const handleGenerate = async () => {
-    if (!user || selectedFiles.length === 0 || !db) return;
+    if (selectedFiles.length === 0) return;
+
+    if (!user) {
+      toast({ title: "Guest Mode", description: "You are in guest mode. Your art won't be saved to the cloud." });
+    }
 
     setIsGenerating(true);
     setIsUploading(true);
@@ -190,19 +189,23 @@ export default function Dashboard() {
 
       for (let i = 0; i < selectedFiles.length; i++) {
         const file = selectedFiles[i];
-        const storagePath = `users/${user.uid}/uploads/${Date.now()}_${file.name}`;
-        const fileRef = ref(storage, storagePath);
+        
+        // In Guest mode, we still upload for the AI to process, but we don't save the record
+        const path = user ? `users/${user.uid}/uploads/${Date.now()}_${file.name}` : `temp/guest/${Date.now()}_${file.name}`;
+        const fileRef = ref(storage, path);
         
         await uploadBytes(fileRef, file);
         const url = await getDownloadURL(fileRef);
         uploadUrls.push(url);
         
-        addDoc(collection(db, 'users', user.uid, 'uploads'), {
-          url,
-          storagePath,
-          fileName: file.name,
-          createdAt: serverTimestamp()
-        });
+        if (user && db) {
+          addDoc(collection(db, 'users', user.uid, 'uploads'), {
+            url,
+            storagePath: path,
+            fileName: file.name,
+            createdAt: serverTimestamp()
+          });
+        }
 
         setUploadProgress(Math.round(((i + 1) / selectedFiles.length) * 100));
       }
@@ -211,21 +214,30 @@ export default function Dashboard() {
       
       const result = await generateAIPortrait({
         imageUrls: uploadUrls,
-        userId: user.uid,
+        userId: user?.uid || 'guest',
         style: selectedStyle,
         intensity: intensity
       });
 
-      addDoc(collection(db, 'users', user.uid, 'generations'), {
-        url: result.imageUrl,
-        prompt: `Portrait in ${selectedStyle} style (Intensity: ${intensity}%)`,
-        style: selectedStyle,
-        intensity: intensity,
-        referenceUrl: uploadUrls[0],
-        createdAt: serverTimestamp()
-      });
+      if (user && db) {
+        addDoc(collection(db, 'users', user.uid, 'generations'), {
+          url: result.imageUrl,
+          prompt: `Portrait in ${selectedStyle} style (Intensity: ${intensity}%)`,
+          style: selectedStyle,
+          intensity: intensity,
+          referenceUrl: uploadUrls[0],
+          createdAt: serverTimestamp()
+        });
+      } else {
+        // Display guest generation
+        const a = document.createElement('a');
+        a.href = result.imageUrl;
+        a.download = `mimicme_guest_portrait.png`;
+        toast({ title: "Done!", description: "Download started automatically for your guest generation." });
+        a.click();
+      }
 
-      toast({ title: "Masterpiece Created!", description: "Your mimicme portrait is ready in the gallery." });
+      toast({ title: "Masterpiece Created!", description: user ? "Your portrait is ready in the gallery." : "Guest generation complete!" });
       setSelectedFiles([]);
       setPreviews([]);
     } catch (error: any) {
@@ -277,7 +289,7 @@ export default function Dashboard() {
     }
   };
 
-  if (authLoading || !user) {
+  if (authLoading) {
     return (
       <div className="min-h-screen bg-[#020617] flex items-center justify-center">
         <Loader2 className="w-10 h-10 animate-spin text-amber-500" />
@@ -297,17 +309,25 @@ export default function Dashboard() {
             </div>
           </div>
           <div className="flex items-center gap-4">
-             <div className="hidden md:flex items-center gap-3 pr-6 border-r border-white/5">
-              <div className="text-right">
-                <p className="text-xs font-bold leading-none mb-1">{user.displayName}</p>
-                <p className="text-[10px] text-slate-500 uppercase font-bold tracking-tighter">Pro Account</p>
-              </div>
-              <img src={user.photoURL || ''} className="w-10 h-10 rounded-full border-2 border-amber-500/30 p-0.5" alt="User" />
-            </div>
-            <Button variant="ghost" size="sm" onClick={handleLogout} className="text-slate-400 hover:text-white rounded-xl">
-              <LogOut className="w-4 h-4 mr-2" />
-              Sign Out
-            </Button>
+            {user ? (
+              <>
+                <div className="hidden md:flex items-center gap-3 pr-6 border-r border-white/5">
+                  <div className="text-right">
+                    <p className="text-xs font-bold leading-none mb-1">{user.displayName}</p>
+                    <p className="text-[10px] text-slate-500 uppercase font-bold tracking-tighter">Pro Account</p>
+                  </div>
+                  <img src={user.photoURL || ''} className="w-10 h-10 rounded-full border-2 border-amber-500/30 p-0.5" alt="User" />
+                </div>
+                <Button variant="ghost" size="sm" onClick={handleLogout} className="text-slate-400 hover:text-white rounded-xl">
+                  <LogOut className="w-4 h-4 mr-2" />
+                  Sign Out
+                </Button>
+              </>
+            ) : (
+              <Button onClick={() => router.push('/')} className="bg-amber-500 text-white font-bold rounded-xl px-6">
+                Sign In to Save
+              </Button>
+            )}
           </div>
         </div>
       </header>
