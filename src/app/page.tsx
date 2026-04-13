@@ -34,7 +34,7 @@ import { toast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import { useUser, useAuth, useFirestore, useCollection } from '@/firebase';
 import { 
-  signInWithPopup, 
+  signInWithRedirect, 
   GoogleAuthProvider, 
   signOut 
 } from 'firebase/auth';
@@ -95,8 +95,8 @@ export default function AISelfieGenerator() {
     if (!auth) return;
     try {
       const provider = new GoogleAuthProvider();
-      await signInWithPopup(auth, provider);
-      toast({ title: "Welcome to mimicme!", description: "Account connected successfully." });
+      // Using redirect instead of popup for better mobile support
+      await signInWithRedirect(auth, provider);
     } catch (error: any) {
       toast({ variant: "destructive", title: "Login Failed", description: error.message });
     }
