@@ -10,9 +10,7 @@ import {
   ShieldCheck,
   Loader2,
   Camera,
-  AlertCircle,
-  Copy,
-  Check
+  AlertCircle
 } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -31,14 +29,6 @@ export default function LandingPage() {
   const auth = useAuth();
   const router = useRouter();
   const [authError, setAuthError] = useState<string | null>(null);
-  const [currentDomain, setCurrentDomain] = useState("");
-  const [copied, setCopied] = useState(false);
-
-  useEffect(() => {
-    if (typeof window !== "undefined") {
-      setCurrentDomain(window.location.hostname);
-    }
-  }, []);
 
   useEffect(() => {
     if (auth) {
@@ -77,13 +67,6 @@ export default function LandingPage() {
     } catch (error: any) {
       toast({ variant: "destructive", title: "Login Failed", description: error.message });
     }
-  };
-
-  const copyDomain = () => {
-    navigator.clipboard.writeText(currentDomain);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-    toast({ title: "Copied!", description: "Domain copied to clipboard." });
   };
 
   if (authLoading || user) {
@@ -142,19 +125,6 @@ export default function LandingPage() {
               <Camera className="mr-2 w-5 h-5" />
               Try Guest Mode
             </Button>
-          </div>
-
-          <div className="mt-12 max-w-lg mx-auto p-6 rounded-3xl bg-white/5 border border-white/10 backdrop-blur-sm animate-in fade-in slide-in-from-bottom-20 duration-1000 delay-700">
-            <p className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-4">Fix 403 Access Error</p>
-            <p className="text-sm text-slate-400 mb-6">
-              Add the domain below to your <strong>Firebase Console &gt; Auth &gt; Settings &gt; Authorized Domains</strong>.
-            </p>
-            <div className="flex items-center gap-2 bg-black/40 p-3 rounded-xl border border-white/5">
-              <code className="text-amber-500 flex-1 font-mono text-xs truncate">{currentDomain}</code>
-              <Button variant="ghost" size="icon" onClick={copyDomain} className="h-10 w-10 text-slate-400 hover:text-amber-500 transition-colors">
-                {copied ? <Check className="w-4 h-4 text-green-500" /> : <Copy className="w-4 h-4" />}
-              </Button>
-            </div>
           </div>
         </div>
       </section>
