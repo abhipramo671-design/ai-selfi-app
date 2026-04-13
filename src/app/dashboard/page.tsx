@@ -19,14 +19,13 @@ import {
   RefreshCw,
   X,
   FlipHorizontal,
-  User,
   Ghost
 } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Progress } from "@/components/ui/progress";
 import { Slider } from "@/components/ui/slider";
+import { Progress } from "@/components/ui/progress";
 import { toast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import { useUser, useAuth, useFirestore, useCollection } from '@/firebase';
@@ -81,7 +80,7 @@ export default function Dashboard() {
   const [selectedMimicTemplate, setSelectedMimicTemplate] = useState<string | null>(PlaceHolderImages[0].imageUrl);
   const videoRef = useRef<HTMLVideoElement>(null);
 
-  // Protected Route Check
+  // Protected Route Check - Be extremely strict to prevent loops
   useEffect(() => {
     if (!authLoading && !user) {
       router.replace('/');
@@ -329,15 +328,19 @@ export default function Dashboard() {
     }
   };
 
+  // Prevent UI flicker by showing global loader
   if (authLoading || (!user && authLoading)) {
     return (
       <div className="min-h-screen bg-[#020617] flex items-center justify-center">
-        <Loader2 className="w-10 h-10 animate-spin text-amber-500" />
+        <div className="text-center space-y-4">
+          <Loader2 className="w-10 h-10 animate-spin text-amber-500 mx-auto" />
+          <p className="text-slate-400 font-bold animate-pulse">Syncing Studio Data...</p>
+        </div>
       </div>
     );
   }
 
-  // If user is not logged in, we shouldn't render the dashboard (redirect useEffect takes care of this)
+  // Final check to prevent unauthorized render before redirect
   if (!user) return null;
 
   return (

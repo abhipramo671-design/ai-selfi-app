@@ -1,7 +1,7 @@
 
 "use client";
 
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { 
   Zap,
   ArrowRight,
@@ -26,29 +26,34 @@ export default function LandingPage() {
   const { user, loading: authLoading } = useUser();
   const auth = useAuth();
   const router = useRouter();
+  const [isProcessingResult, setIsProcessingResult] = useState(true);
 
-  // Handle post-redirect results and existing session
+  // Handle post-redirect results
   useEffect(() => {
     if (!auth) return;
 
-    // Check if we just returned from a redirect
     getRedirectResult(auth)
       .then((result) => {
         if (result?.user) {
           router.replace('/dashboard');
+        } else {
+          setIsProcessingResult(false);
         }
       })
       .catch((error) => {
         console.error("Auth Redirect Error:", error);
-        toast({
-          variant: "destructive",
-          title: "Login Error",
-          description: error.message || "Failed to complete sign-in.",
-        });
+        setIsProcessingResult(false);
+        if (error.code !== 'auth/popup-closed-by-user') {
+          toast({
+            variant: "destructive",
+            title: "Login Error",
+            description: "Failed to complete sign-in. Please ensure the domain is authorized in Firebase Console.",
+          });
+        }
       });
   }, [auth, router]);
 
-  // If user is already authenticated, move to dashboard
+  // If user is already authenticated by session, move to dashboard
   useEffect(() => {
     if (user && !authLoading) {
       router.replace('/dashboard');
@@ -72,7 +77,7 @@ export default function LandingPage() {
   };
 
   // Show a full-screen loader if auth is still processing or if we're already logged in
-  if (authLoading || user) {
+  if (authLoading || isProcessingResult || user) {
     return (
       <div className="min-h-screen bg-[#020617] flex items-center justify-center">
         <div className="text-center space-y-4">
