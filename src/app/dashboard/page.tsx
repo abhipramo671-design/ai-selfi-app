@@ -19,7 +19,8 @@ import {
   RefreshCw,
   X,
   FlipHorizontal,
-  User
+  User,
+  Ghost
 } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -44,7 +45,9 @@ import {
 } from 'firebase/firestore';
 import { getStorage, ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { generateAIPortrait } from '@/ai/flows/generate-portrait';
+import { transformedSelfieCapture } from '@/ai/flows/transformed-selfie-capture';
 import { useRouter } from 'next/navigation';
+import { PlaceHolderImages } from '@/lib/placeholder-images';
 
 const STYLES = [
   { id: 'realistic', label: 'Realistic', icon: '👔' },
@@ -74,6 +77,8 @@ export default function Dashboard() {
   const [showCamera, setShowCamera] = useState(false);
   const [cameraStream, setCameraStream] = useState<MediaStream | null>(null);
   const [facingMode, setFacingMode] = useState<'user' | 'environment'>('user');
+  const [mimicMode, setMimicMode] = useState(false);
+  const [selectedMimicTemplate, setSelectedMimicTemplate] = useState<string | null>(PlaceHolderImages[0].imageUrl);
   const videoRef = useRef<HTMLVideoElement>(null);
 
   const generationsQuery = useMemo(() => {
@@ -120,7 +125,7 @@ export default function Dashboard() {
     if (showCamera) startCamera();
   }, [facingMode]);
 
-  const capturePhoto = () => {
+  const capturePhoto = async () => {
     if (videoRef.current) {
       const canvas = document.createElement('canvas');
       canvas.width = videoRef.current.videoWidth;
@@ -128,13 +133,49 @@ export default function Dashboard() {
       const ctx = canvas.getContext('2d');
       if (ctx) {
         ctx.drawImage(videoRef.current, 0, 0);
-        canvas.toBlob((blob) => {
-          if (blob) {
-            const file = new File([blob], `camera_${Date.now()}.jpg`, { type: 'image/jpeg' });
-            addFile(file);
+        
+        if (mimicMode && selectedMimicTemplate) {
+          setIsGenerating(true);
+          const frameDataUri = canvas.toDataURL('image/jpeg');
+          
+          try {
+            const result = await transformedSelfieCapture({
+              currentCameraFrame: frameDataUri,
+              templateIdentityImage: selectedMimicTemplate
+            });
+
+            if (user && db) {
+              addDoc(collection(db, 'users', user.uid, 'generations'), {
+                url: result.transformedSelfie,
+                prompt: `Mimic transformation using template face`,
+                style: 'mimic',
+                intensity: 100,
+                referenceUrl: frameDataUri,
+                createdAt: serverTimestamp()
+              });
+              toast({ title: "Mimic Success!", description: "Your transformed selfie is in the gallery." });
+            } else {
+              const a = document.createElement('a');
+              a.href = result.transformedSelfie;
+              a.download = `mimicme_transformed.png`;
+              a.click();
+              toast({ title: "Mimic Success!", description: "Download started." });
+            }
             stopCamera();
+          } catch (error: any) {
+            toast({ variant: "destructive", title: "Mimic Failed", description: error.message });
+          } finally {
+            setIsGenerating(false);
           }
-        }, 'image/jpeg', 0.9);
+        } else {
+          canvas.toBlob((blob) => {
+            if (blob) {
+              const file = new File([blob], `camera_${Date.now()}.jpg`, { type: 'image/jpeg' });
+              addFile(file);
+              stopCamera();
+            }
+          }, 'image/jpeg', 0.9);
+        }
       }
     }
   };
@@ -176,10 +217,6 @@ export default function Dashboard() {
   const handleGenerate = async () => {
     if (selectedFiles.length === 0) return;
 
-    if (!user) {
-      toast({ title: "Guest Mode", description: "You are in guest mode. Your art won't be saved to the cloud." });
-    }
-
     setIsGenerating(true);
     setIsUploading(true);
     
@@ -189,8 +226,6 @@ export default function Dashboard() {
 
       for (let i = 0; i < selectedFiles.length; i++) {
         const file = selectedFiles[i];
-        
-        // In Guest mode, we still upload for the AI to process, but we don't save the record
         const path = user ? `users/${user.uid}/uploads/${Date.now()}_${file.name}` : `temp/guest/${Date.now()}_${file.name}`;
         const fileRef = ref(storage, path);
         
@@ -229,15 +264,13 @@ export default function Dashboard() {
           createdAt: serverTimestamp()
         });
       } else {
-        // Display guest generation
         const a = document.createElement('a');
         a.href = result.imageUrl;
-        a.download = `mimicme_guest_portrait.png`;
-        toast({ title: "Done!", description: "Download started automatically for your guest generation." });
+        a.download = `mimicme_portrait.png`;
         a.click();
       }
 
-      toast({ title: "Masterpiece Created!", description: user ? "Your portrait is ready in the gallery." : "Guest generation complete!" });
+      toast({ title: "Masterpiece Created!", description: "Your art is ready." });
       setSelectedFiles([]);
       setPreviews([]);
     } catch (error: any) {
@@ -253,9 +286,9 @@ export default function Dashboard() {
     if (!db || !user) return;
     try {
       await deleteDoc(doc(db, 'users', user.uid, 'generations', id));
-      toast({ title: "Deleted", description: "Generation removed from your history." });
+      toast({ title: "Deleted", description: "Generation removed." });
     } catch (e) {
-      toast({ variant: "destructive", title: "Error", description: "Could not delete image." });
+      toast({ variant: "destructive", title: "Error", description: "Could not delete." });
     }
   };
 
@@ -266,10 +299,10 @@ export default function Dashboard() {
       await navigator.clipboard.write([
         new ClipboardItem({ [blob.type]: blob })
       ]);
-      toast({ title: "Copied!", description: "Image copied to clipboard." });
+      toast({ title: "Copied!", description: "Image in clipboard." });
     } catch (err) {
       navigator.clipboard.writeText(url);
-      toast({ title: "Link Copied", description: "Direct image link copied to clipboard." });
+      toast({ title: "Link Copied", description: "Direct link copied." });
     }
   };
 
@@ -277,8 +310,8 @@ export default function Dashboard() {
     if (navigator.share) {
       try {
         await navigator.share({
-          title: 'My mimicme Portrait',
-          text: 'Check out this AI portrait I generated with mimicme!',
+          title: 'mimicme Portrait',
+          text: 'Check this AI portrait!',
           url: url
         });
       } catch (err) {
@@ -336,8 +369,8 @@ export default function Dashboard() {
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-12">
           <div className="lg:col-span-5 space-y-8">
             <div className="flex flex-col gap-2">
-              <h1 className="text-4xl font-black tracking-tight">Camera Controls</h1>
-              <p className="text-slate-400">Transform your identity in seconds with mimicme.</p>
+              <h1 className="text-4xl font-black tracking-tight">AI Studio</h1>
+              <p className="text-slate-400">Select your style and capture the perfect shot.</p>
             </div>
 
             <Card className="glass-morphism border-0 overflow-hidden rounded-[2.5rem] shadow-2xl">
@@ -391,7 +424,7 @@ export default function Dashboard() {
                     </label>
                     <Button variant="ghost" size="sm" onClick={startCamera} className="h-8 text-amber-500 hover:text-amber-400 font-bold text-[10px] uppercase">
                       <Camera className="w-3.5 h-3.5 mr-1.5" />
-                      Launch mimicme
+                      Open Camera
                     </Button>
                   </div>
 
@@ -419,8 +452,8 @@ export default function Dashboard() {
                         <div className="w-14 h-14 rounded-full bg-amber-500/10 flex items-center justify-center mx-auto text-amber-500 mb-2">
                           <Upload className="w-6 h-6" />
                         </div>
-                        <p className="font-bold text-sm">Drop your selfies here</p>
-                        <p className="text-xs text-slate-500">PNG, JPG up to 5MB each</p>
+                        <p className="font-bold text-sm">Upload your selfies</p>
+                        <p className="text-xs text-slate-500">Drag & drop up to 5 photos</p>
                       </div>
                     ) : (
                       <div className="grid grid-cols-3 gap-2 w-full relative z-30">
@@ -451,11 +484,11 @@ export default function Dashboard() {
                       <div className="flex justify-between items-center text-[10px] font-bold uppercase tracking-widest text-amber-500">
                         <span className="flex items-center gap-2">
                           <Loader2 className="w-3 h-3 animate-spin" />
-                          {isUploading ? 'Preparing Assets' : 'mimicme generating'}
+                          {isUploading ? 'Uploading Assets' : 'AI Generating'}
                         </span>
-                        <span>{isUploading ? `${uploadProgress}%` : "50%"}</span>
+                        <span>{isUploading ? `${uploadProgress}%` : "Processing"}</span>
                       </div>
-                      <Progress value={isUploading ? uploadProgress : 50} className="h-1.5" />
+                      <Progress value={isUploading ? uploadProgress : 60} className="h-1.5" />
                     </div>
                   )}
 
@@ -465,9 +498,9 @@ export default function Dashboard() {
                     className="w-full h-16 text-lg font-bold rounded-[2rem] bg-amber-500 hover:bg-amber-600 text-white shadow-xl shadow-amber-500/30 transition-all active:scale-[0.98]"
                   >
                     {isGenerating ? (
-                      <><Loader2 className="mr-2 h-5 w-5 animate-spin" /> Cooking...</>
+                      <><Loader2 className="mr-2 h-5 w-5 animate-spin" /> Generating...</>
                     ) : (
-                      <><Sparkles className="mr-2 h-5 w-5" /> Generate with mimicme</>
+                      <><Sparkles className="mr-2 h-5 w-5" /> Generate AI Masterpiece</>
                     )}
                   </Button>
                 </div>
@@ -476,14 +509,12 @@ export default function Dashboard() {
           </div>
 
           <div className="lg:col-span-7 space-y-10">
-            <div className="flex items-center justify-between">
-              <div className="flex flex-col gap-1">
-                <h2 className="text-3xl font-black tracking-tight flex items-center gap-3">
-                  <Layers className="text-amber-500 w-8 h-8" />
-                  Your mimicme Gallery
-                </h2>
-                <p className="text-slate-500">Your personal cloud of AI masterpieces.</p>
-              </div>
+            <div className="flex flex-col gap-1">
+              <h2 className="text-3xl font-black tracking-tight flex items-center gap-3">
+                <Layers className="text-amber-500 w-8 h-8" />
+                Gallery
+              </h2>
+              <p className="text-slate-500">Your collection of AI-generated portraits.</p>
             </div>
 
             {generations && generations.length > 0 ? (
@@ -495,8 +526,8 @@ export default function Dashboard() {
                       
                       <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-all duration-300">
                         <div className="absolute top-4 left-4">
-                          <Badge className="bg-amber-500 text-white border-0 font-bold uppercase text-[10px] py-1 px-3">
-                            {gen.style} ({gen.intensity}%)
+                          <Badge className="bg-amber-500 text-white border-0 font-bold uppercase text-[10px] py-1.5 px-3">
+                            {gen.style}
                           </Badge>
                         </div>
                         
@@ -510,24 +541,18 @@ export default function Dashboard() {
                         </div>
 
                         <div className="absolute inset-x-0 bottom-0 p-8 space-y-4">
-                           {gen.referenceUrl && (
-                            <div className="flex items-center gap-3 mb-4 p-2 bg-white/5 backdrop-blur-md rounded-2xl w-fit">
-                               <img src={gen.referenceUrl} className="w-10 h-10 rounded-lg object-cover border border-white/20" alt="Source" />
-                               <div className="text-[10px] font-bold uppercase tracking-widest text-slate-300">Original Reference</div>
-                            </div>
-                          )}
                           <div className="flex gap-2">
                             <Button 
                               className="flex-1 h-12 bg-white text-black font-bold rounded-2xl hover:bg-slate-200"
                               onClick={() => {
                                 const a = document.createElement('a');
                                 a.href = gen.url;
-                                a.download = `mimicme_portrait_${gen.id}.png`;
+                                a.download = `mimicme_${gen.id}.png`;
                                 a.click();
                               }}
                             >
                               <Download className="w-4 h-4 mr-2" />
-                              Save
+                              Download
                             </Button>
                             <Button 
                               variant="outline" 
@@ -549,7 +574,7 @@ export default function Dashboard() {
                   <Sparkles className="w-10 h-10" />
                 </div>
                 <h3 className="text-2xl font-bold mb-2">No art yet</h3>
-                <p className="text-slate-500 max-w-xs mx-auto text-sm">Upload your selfies to start building your mimicme gallery.</p>
+                <p className="text-slate-500 max-w-xs mx-auto text-sm">Upload your selfies to start building your gallery.</p>
               </div>
             )}
           </div>
@@ -557,28 +582,81 @@ export default function Dashboard() {
       </main>
 
       {showCamera && (
-        <div className="fixed inset-0 z-[100] bg-black flex flex-col items-center justify-center p-6">
+        <div className="fixed inset-0 z-[100] bg-black flex flex-col items-center justify-center p-6 backdrop-blur-3xl bg-black/90">
           <Button variant="ghost" size="icon" onClick={stopCamera} className="absolute top-6 right-6 text-white hover:bg-white/10 h-12 w-12 rounded-full">
             <X className="w-8 h-8" />
           </Button>
           
-          <div className="relative w-full max-w-md aspect-[3/4] rounded-[2rem] overflow-hidden bg-slate-900 border border-white/10">
+          <div className="relative w-full max-w-md aspect-[3/4] rounded-[3rem] overflow-hidden bg-slate-900 border border-white/10 shadow-2xl">
             <video ref={videoRef} className="w-full h-full object-cover" autoPlay playsInline muted />
             
-            <div className="absolute bottom-8 inset-x-0 flex items-center justify-center gap-8">
-              <Button onClick={toggleCamera} variant="secondary" size="icon" className="h-14 w-14 rounded-full bg-white/10 backdrop-blur-md text-white">
-                <FlipHorizontal className="w-6 h-6" />
-              </Button>
-              <button 
-                onClick={capturePhoto}
-                className="w-20 h-20 rounded-full border-4 border-white flex items-center justify-center active:scale-95 transition-all"
-              >
-                <div className="w-16 h-16 rounded-full bg-white" />
-              </button>
-              <div className="w-14 h-14" />
+            {mimicMode && (
+              <div className="absolute inset-0 pointer-events-none border-4 border-amber-500/50 flex flex-col items-center justify-center">
+                 <div className="w-full h-full bg-amber-500/5 flex items-center justify-center">
+                    <Ghost className="w-32 h-32 text-amber-500/20 animate-pulse" />
+                 </div>
+              </div>
+            )}
+
+            <div className="absolute bottom-8 inset-x-0 flex flex-col items-center gap-6">
+              {mimicMode && (
+                <div className="flex gap-3 overflow-x-auto px-6 py-2 w-full max-w-full no-scrollbar justify-center">
+                  {PlaceHolderImages.map((img) => (
+                    <button
+                      key={img.id}
+                      onClick={() => setSelectedMimicTemplate(img.imageUrl)}
+                      className={cn(
+                        "w-14 h-14 rounded-full border-2 transition-all flex-shrink-0 overflow-hidden",
+                        selectedMimicTemplate === img.imageUrl ? "border-amber-500 scale-110" : "border-white/20 opacity-60"
+                      )}
+                    >
+                      <img src={img.imageUrl} className="w-full h-full object-cover" alt={img.description} />
+                    </button>
+                  ))}
+                </div>
+              )}
+
+              <div className="flex items-center justify-center gap-10">
+                <Button onClick={toggleCamera} variant="secondary" size="icon" className="h-14 w-14 rounded-full bg-white/10 backdrop-blur-md text-white border border-white/10">
+                  <FlipHorizontal className="w-6 h-6" />
+                </Button>
+                
+                <button 
+                  onClick={capturePhoto}
+                  disabled={isGenerating}
+                  className={cn(
+                    "w-24 h-24 rounded-full border-4 flex items-center justify-center active:scale-90 transition-all",
+                    mimicMode ? "border-amber-500" : "border-white"
+                  )}
+                >
+                  <div className={cn(
+                    "w-20 h-20 rounded-full",
+                    isGenerating ? "bg-amber-500/50 animate-pulse" : (mimicMode ? "bg-amber-500" : "bg-white")
+                  )} />
+                </button>
+
+                <Button 
+                  onClick={() => setMimicMode(!mimicMode)} 
+                  variant={mimicMode ? "default" : "secondary"} 
+                  size="icon" 
+                  className={cn(
+                    "h-14 w-14 rounded-full backdrop-blur-md border",
+                    mimicMode ? "bg-amber-500 border-amber-500 text-white" : "bg-white/10 border-white/10 text-white"
+                  )}
+                >
+                  <Sparkles className="w-6 h-6" />
+                </Button>
+              </div>
             </div>
           </div>
-          <p className="mt-8 text-slate-400 font-bold uppercase tracking-widest text-xs">Align your face in the mimicme frame</p>
+          <div className="mt-8 flex flex-col items-center gap-2">
+            <p className="text-white font-black uppercase tracking-[0.2em] text-[10px]">
+              {mimicMode ? "Mimic Mode Active" : "Standard Capture"}
+            </p>
+            <p className="text-slate-500 text-xs text-center max-w-xs">
+              {mimicMode ? "Replace your face with the selected template" : "Align your face in the center of the frame"}
+            </p>
+          </div>
         </div>
       )}
     </div>

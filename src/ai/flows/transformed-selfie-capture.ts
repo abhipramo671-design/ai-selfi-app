@@ -1,3 +1,4 @@
+
 'use server';
 /**
  * @fileOverview This file implements a Genkit flow for capturing a transformed selfie.
@@ -54,11 +55,14 @@ const transformedSelfiePrompt = ai.definePrompt({
   name: 'transformedSelfiePrompt',
   input: {schema: TransformedSelfieCaptureInputSchema},
   output: {schema: TransformedSelfieCaptureOutputSchema},
-  prompt: `Here are two images. The first image is a live camera frame. The second image is a template identity.
-Your task is to replace the face in the first image with the face from the second image.
-Ensure the replacement is seamless, matching the pose, lighting, and expression of the face in the first image.
-The real face in the camera frame must be completely hidden and only the transformed identity should be visible.
-Output only the single transformed image.
+  prompt: `You are an expert at high-end digital face replacement.
+Given a camera frame and a template identity, create a new image where the face in the camera frame is seamlessly replaced by the identity in the template.
+
+Instructions:
+1. Maintain the exact head pose, lighting, and facial expression of the person in the camera frame.
+2. Fully integrate the features of the template identity so the replacement is indistinguishable from reality.
+3. The background and clothing from the camera frame must remain unchanged.
+4. Output the final result as an image.
 
 Camera Frame: {{media url=currentCameraFrame}}
 Template Identity: {{media url=templateIdentityImage}}`,
@@ -72,10 +76,10 @@ const transformedSelfieCaptureFlow = ai.defineFlow(
   },
   async (input) => {
     const {media} = await ai.generate({
-      model: googleAI.model('gemini-2.5-flash-image'), // Use a multimodal model capable of image manipulation
-      prompt: transformedSelfiePrompt(input), // Pass the structured prompt with media and text
+      model: googleAI.model('gemini-2.0-flash'), // Using a stable multimodal model
+      prompt: transformedSelfiePrompt(input),
       config: {
-        responseModalities: ['IMAGE'], // We expect an image as output
+        responseModalities: ['IMAGE'],
       },
     });
 
