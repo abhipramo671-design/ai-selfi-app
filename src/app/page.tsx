@@ -10,7 +10,6 @@ import {
   ShieldCheck,
   Loader2,
   Camera,
-  AlertCircle
 } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -22,59 +21,74 @@ import {
   getRedirectResult
 } from 'firebase/auth';
 import { useRouter } from 'next/navigation';
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
 export default function LandingPage() {
   const { user, loading: authLoading } = useUser();
   const auth = useAuth();
   const router = useRouter();
-  const [authError, setAuthError] = useState<string | null>(null);
+  const [isRedirecting, setIsRedirecting] = useState(false);
 
+  // Handle post-redirect results
   useEffect(() => {
     if (auth) {
       getRedirectResult(auth)
         .then((result) => {
-          if (result) {
-            router.push('/dashboard');
+          if (result && result.user) {
+            router.replace('/dashboard');
           }
         })
         .catch((error) => {
-          console.error("Redirect Auth Error:", error);
-          setAuthError(error.message);
+          console.error("Auth Redirect Error:", error);
           if (error.code === 'auth/unauthorized-domain') {
             toast({
               variant: "destructive",
-              title: "Domain Not Authorized",
-              description: "This domain needs to be added to your Firebase Console.",
+              title: "Unauthorized Domain",
+              description: "Please ensure this domain is added to Authorized Domains in Firebase Console.",
+            });
+          } else {
+            toast({
+              variant: "destructive",
+              title: "Login Error",
+              description: error.message || "Failed to complete sign-in.",
             });
           }
         });
     }
   }, [auth, router]);
 
+  // Handle existing session
   useEffect(() => {
     if (user && !authLoading) {
-      router.push('/dashboard');
+      router.replace('/dashboard');
     }
   }, [user, authLoading, router]);
 
   const handleLogin = async () => {
     if (!auth) return;
+    setIsRedirecting(true);
     try {
       const provider = new GoogleAuthProvider();
       provider.setCustomParameters({ prompt: 'select_account' });
       await signInWithRedirect(auth, provider);
     } catch (error: any) {
-      toast({ variant: "destructive", title: "Login Failed", description: error.message });
+      setIsRedirecting(false);
+      console.error("Login Initiation Error:", error);
+      toast({ 
+        variant: "destructive", 
+        title: "Login Failed", 
+        description: error.message 
+      });
     }
   };
 
-  if (authLoading || user) {
+  if (authLoading || user || isRedirecting) {
     return (
       <div className="min-h-screen bg-[#020617] flex items-center justify-center">
         <div className="text-center space-y-4">
           <Loader2 className="w-10 h-10 animate-spin text-amber-500 mx-auto" />
-          <p className="text-slate-400 font-bold animate-pulse">Entering mimicme studio...</p>
+          <p className="text-slate-400 font-bold animate-pulse">
+            {isRedirecting ? "Connecting to Google..." : "Entering mimicme studio..."}
+          </p>
         </div>
       </div>
     );
@@ -95,17 +109,6 @@ export default function LandingPage() {
       <section className="relative pt-20 pb-12 lg:pt-32 lg:pb-24 overflow-hidden">
         <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[1000px] h-[600px] bg-amber-500/10 blur-[150px] rounded-full -z-10" />
         <div className="container mx-auto px-6 text-center">
-          
-          {authError && (
-            <Alert variant="destructive" className="max-w-2xl mx-auto mb-8 bg-red-500/10 border-red-500/20 text-red-400">
-              <AlertCircle className="h-4 w-4" />
-              <AlertTitle>Authentication Issue</AlertTitle>
-              <AlertDescription>
-                {authError}. Please ensure your domain is whitelisted in Firebase.
-              </AlertDescription>
-            </Alert>
-          )}
-
           <Badge className="mb-6 bg-amber-500/10 text-amber-500 border-amber-500/20 py-1.5 px-4 rounded-full text-xs font-bold uppercase tracking-widest animate-in fade-in slide-in-from-top-4 duration-1000">
             mimicme ai camera
           </Badge>
